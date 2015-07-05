@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FuzzyController name="newSystem" ip="127.0.0.1">
+    <KnowledgeBase>
+        <FuzzyVariable name="building" domainleft="5.0" domainright="10.0" scale="" type="input">
+            <FuzzyTerm name="good" complement="false">
+                <TrapezoidShape Param1="6.0" Param2="7.0" Param3="8.0" Param4="9.5"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="ugly" complement="false">
+                <RightLinearShape Param1="5.0" Param2="6.5"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="wonderful" complement="false">
+                <LeftLinearShape Param1="9.0" Param2="10.0"/>
+            </FuzzyTerm>
+        </FuzzyVariable>
+        <FuzzyVariable name="food" domainleft="0.0" domainright="10.0" scale="" type="input">
+            <FuzzyTerm name="delicius" complement="false">
+                <LeftLinearShape Param1="5.5" Param2="10.0"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="rancid" complement="false">
+                <TriangularShape Param1="0.0" Param2="2.0" Param3="5.5"/>
+            </FuzzyTerm>
+        </FuzzyVariable>
+        <FuzzyVariable name="service" domainleft="0.0" domainright="10.0" scale="" type="input">
+            <FuzzyTerm name="excellent" complement="false">
+                <LeftLinearShape Param1="6.0" Param2="10.0"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="good" complement="false">
+                <TrapezoidShape Param1="1.0" Param2="4.0" Param3="6.0" Param4="8.0"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="poor" complement="false">
+                <RightLinearShape Param1="0.0" Param2="3.0"/>
+            </FuzzyTerm>
+        </FuzzyVariable>
+        <FuzzyVariable name="tip" domainleft="0.0" domainright="30.0" scale="null" defaultValue="0.0" accumulation="MAX" defuzzifier="COG" type="output">
+            <FuzzyTerm name="average" complement="false">
+                <TriangularShape Param1="10.0" Param2="15.0" Param3="20.0"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="cheap" complement="false">
+                <TriangularShape Param1="0.0" Param2="5.0" Param3="10.0"/>
+            </FuzzyTerm>
+            <FuzzyTerm name="generouse" complement="false">
+                <TriangularShape Param1="20.0" Param2="25.0" Param3="30.0"/>
+            </FuzzyTerm>
+        </FuzzyVariable>
+    </KnowledgeBase>
+    <RuleBase name="Rulebase1" andMethod="MIN" orMethod="MAX" activationMethod="MIN" type="mamdani">
+        <Rule name="RULE1" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause modifier="very">
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE10" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE11" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE12" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>generouse</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE13" connector="or" operator="MAX" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE14" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>wonderful</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE15" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>wonderful</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE16" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>wonderful</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE17" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>wonderful</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>generouse</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE18" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>wonderful</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause modifier="very">
+                    <Variable>tip</Variable>
+                    <Term>generouse</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE2" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE3" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE4" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE5" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE6" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>ugly</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>delicius</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE7" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>poor</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>cheap</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE8" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>good</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+        <Rule name="RULE9" connector="and" operator="MIN" weight="1.0">
+            <Antecedent>
+                <Clause>
+                    <Variable>building</Variable>
+                    <Term>good</Term>
+                </Clause>
+                <Clause>
+                    <Variable>food</Variable>
+                    <Term>rancid</Term>
+                </Clause>
+                <Clause>
+                    <Variable>service</Variable>
+                    <Term>excellent</Term>
+                </Clause>
+            </Antecedent>
+            <Consequent>
+                <Clause>
+                    <Variable>tip</Variable>
+                    <Term>average</Term>
+                </Clause>
+            </Consequent>
+        </Rule>
+    </RuleBase>
+</FuzzyController>

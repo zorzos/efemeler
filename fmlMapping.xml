@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<xml>
+	<class value="FuzzyController">
+		<property value="name">
+			<xpath>//FuzzyController/@name</xpath>
+		</property>
+
+		<property value="ip">
+			<xpath>//FuzzyController/@ip</xpath>
+		</property>
+	</class>
+
+	<class value="FuzzyVariable">
+		<property value="name">
+			<xpath>//FuzzyVariable/@name</xpath>
+		</property>
+
+		<property value="domainleft">
+			<xpath>//FuzzyVariable/@domainleft</xpath>
+		</property>
+
+		<property value="domainright">
+			<xpath>//FuzzyVariable/@domainright</xpath>
+		</property>
+
+		<property value="scale">
+			<xpath>//FuzzyVariable/@scale</xpath>
+		</property>
+
+		<property value="type">
+			<xpath>//FuzzyVariable/@type</xpath>
+		</property>
+	</class>
+
+	<class value="FuzzyTerm">
+		<property value="name">
+			<xpath>//FuzzyTerm/@name</xpath>
+		</property>
+
+		<property value="complement">
+			<xpath>//FuzzyTerm/@complement</xpath>
+		</property>
+
+		<property value="membershipFunction">
+			<xpath>//FuzzyTerm/*</xpath>
+		</property>
+	</class>
+
+	<class value="RuleBase">
+		<property value="name">
+			<xpath>//RuleBase/@name</xpath>
+		</property>
+
+		<property value="andMethod">
+			<xpath>//RuleBase/@andMethod</xpath>
+		</property>
+
+		<property value="orMethod">
+			<xpath>//RuleBase/@orMethod</xpath>
+		</property>
+
+		<property value="activationMethod">
+			<xpath>//RuleBase/@activationMethod</xpath>
+		</property>
+
+		<property value="type">
+			<xpath>//RuleBase/@type</xpath>
+		</property>
+	</class>
+
+	<class value="Rule">
+		<property value="name">
+			<xpath>//Rule/@name</xpath>
+		</property>
+
+		<property value="connector">
+			<xpath>//Rule/@connector</xpath>
+		</property>
+
+		<property value="operator">
+			<xpath>//Rule/@operator</xpath>
+		</property>
+
+		<property value="weight">
+			<xpath>//Rule/@weight</xpath>
+		</property>
+	</class>
+</xml>
