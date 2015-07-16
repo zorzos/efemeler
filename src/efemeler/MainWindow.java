@@ -49,9 +49,9 @@ public class MainWindow {
 	JList mfList = new JList();
 	JButton btnAddMf = new JButton("Add MF");
 	JSeparator separator_3 = new JSeparator();
-	JLabel lblRules = new JLabel("Rules");
-	JList ruleList = new JList();
-	JButton btnAddRule = new JButton("Add rule");
+	JLabel lblRules = new JLabel("Rule Bases");
+	JList ruleBaseList = new JList();
+	JButton btnAddRule = new JButton("Add");
 	JMenuBar menuBar = new JMenuBar();
 	JMenu mnOptions = new JMenu("Options");
 	JMenuItem mntmExportCode = new JMenuItem("Export code");
@@ -169,8 +169,8 @@ public class MainWindow {
 		lblRules.setBounds(458, 221, 89, 14);
 		frmEfemeler.getContentPane().add(lblRules);
 		
-		ruleList.setBounds(458, 244, 106, 125);
-		frmEfemeler.getContentPane().add(ruleList);
+		ruleBaseList.setBounds(458, 244, 106, 125);
+		frmEfemeler.getContentPane().add(ruleBaseList);
 		btnAddRule.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				AddRule ruleDialog = new AddRule(variableList);

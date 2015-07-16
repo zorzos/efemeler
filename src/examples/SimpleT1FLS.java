@@ -74,7 +74,7 @@ public class SimpleT1FLS
         rulebase.addRule(new T1_Rule(new T1_Antecedent[]{greatFood, friendlyService}, highTip));
         
         //just an example of setting the discretisation level of an output - the usual level is 100
-        tip.setDiscretisationLevel(50);        
+        //tip.setDiscretisationLevel(50);        
         
         //get some outputs
         getTip(7,8);
