@@ -6,8 +6,14 @@ import type1.system.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static java.nio.file.StandardCopyOption.*;
 
 public class Exporter {
 	
@@ -52,7 +58,9 @@ public class Exporter {
 			newFIS.println("\tInput " + inputs[i].getName() + ";");
 		}
 		
+		newFIS.println();
 		newFIS.println("\tOuput " + output.getName() + ";");
+		newFIS.println();
 		newFIS.println("\tT1_Rulebase " + rbName + ";");
 		newFIS.println();
 		newFIS.println("\tpublic " + systemName + "() { ");
@@ -170,8 +178,9 @@ public class Exporter {
 		newFIS.println();
 	}
 	
-	public static void writeMain() {
+	public static void writeMain(String name) {
 		newFIS.println("\t\tpublic static void main(String[] args) {");
+		newFIS.println("\t\t\t new " + name + "();" );
 		newFIS.println("\t\t}");
 	}
 	
@@ -181,7 +190,13 @@ public class Exporter {
 		newFIS.close();
 	}
 	
-	public static void main(String args[]) throws FileNotFoundException, UnsupportedEncodingException {
+	public static void createProject() {
+		File genericFolder = new File(System.getProperty("user.dir") + "/src/generic");
+		File toolsFolder = new File(System.getProperty("user.dir") + "/src/tools");
+		File type1Folder = new File(System.getProperty("user.dir") + "/src/type1");
+	}
+	
+	public static void main(String args[]) throws IOException {
 		boolean directory = new File("example").mkdirs();
 		if (!directory) {
 			System.out.println("failure");
@@ -216,6 +231,7 @@ public class Exporter {
 			writeRuleBase(6);
 			writeRule(sampleAnts, lowTip);
 			writeResult();
+			writeMain(systemName);
 			closeUp();
 		}
 	}
