@@ -5,8 +5,12 @@ import type1.sets.*;
 import type1.system.*;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
@@ -22,9 +26,23 @@ public class Exporter {
 	private static Input[] inputs;
 	private static Output output;
 	
-	public Exporter(String name) {
+	public Exporter(String name) throws IOException {
 		try {
-			newFIS = new PrintWriter(name, "UTF-8");
+			File systemFolder = new File(name);
+			systemFolder.mkdirs();
+			newFIS = new PrintWriter(System.getProperty("user.dir") + "/" + name + "/" + name + ".java", "UTF-8");
+			File[] sources  = { new File(System.getProperty("user.dir") + "/src/generic/"), 
+								new File(System.getProperty("user.dir") + "/src/tools/"), 
+								new File(System.getProperty("user.dir") + "/src/type1/") };
+
+			File[] targets = { 	new File(System.getProperty("user.dir") + "/" + name + "/generic/"), 
+								new File(System.getProperty("user.dir") + "/" + name + "/tools/"), 
+								new File(System.getProperty("user.dir") + "/" + name + "/type1/") };
+
+			for (int i=0; i<sources.length; i++) {
+				copyFolder(sources[i], targets[i]);
+			}
+			
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -32,6 +50,43 @@ public class Exporter {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	private static void copyFolder(File source, File target) throws IOException {
+		if(source.isDirectory()){
+			 
+    		//if directory not exists, create it
+    		if(!target.exists()){
+    			target.mkdir();
+ 
+    			//list all the directory contents
+    			String files[] = source.list();
+ 
+	    		for (String file : files) {
+	    		   //construct the src and dest file structure
+	    		   File srcFile = new File(source, file);
+	    		   File destFile = new File(target, file);
+	    		   //recursive copy
+	    		   copyFolder(srcFile,destFile);
+	    		}
+    		}
+    	} else {
+    		//if file, then copy it
+    		//Use bytes stream to support all file types
+	    		InputStream in = new FileInputStream(source);
+    	        OutputStream out = new FileOutputStream(target); 
+ 
+    	        byte[] buffer = new byte[1024];
+ 
+    	        int length;
+    	        //copy the file content in bytes 
+    	        while ((length = in.read(buffer)) > 0){
+    	    	   out.write(buffer, 0, length);
+    	        }
+ 
+    	        in.close();
+    	        out.close();
+	    }
 	}
 	
 	private static String getVariableName(String name) {
@@ -190,49 +245,43 @@ public class Exporter {
 		newFIS.close();
 	}
 	
-	public static void createProject() {
-		File genericFolder = new File(System.getProperty("user.dir") + "/src/generic");
-		File toolsFolder = new File(System.getProperty("user.dir") + "/src/tools");
-		File type1Folder = new File(System.getProperty("user.dir") + "/src/type1");
-	}
-	
 	public static void main(String args[]) throws IOException {
-		boolean directory = new File("example").mkdirs();
-		if (!directory) {
-			System.out.println("failure");
-		} else {
-			System.out.println("success");
-			String systemName = "SampleSystem";
-			newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
-			Input[] sampleIn = new Input[2];
-			Input food = new Input("food", new Tuple(5.0, 6.0));
-			Input service = new Input("service", new Tuple(7.0, 8.0));
-			sampleIn[0] = food;
-			sampleIn[1] = service;
-			Output tip = new Output("tip", new Tuple(4.0, 8.0));
-			prepare(systemName, sampleIn, tip, "rulebase");
-			writeInputs(sampleIn);
-			writeOutputVariable(tip);
-			T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
-			T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
-			T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
-			writeMembershipFunction(badFoodMF);
-			writeMembershipFunction(unfriendlyServiceMF);
-			writeMembershipFunction(lowTipMF);
-			T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
-			writeAntecedent(badFood);
-			T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
-			writeAntecedent(unfriendlyService);
-			T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
-			writeConsequent(lowTip);
-			T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
-			sampleAnts[0] = badFood;
-			sampleAnts[1] = unfriendlyService;
-			writeRuleBase(6);
-			writeRule(sampleAnts, lowTip);
-			writeResult();
-			writeMain(systemName);
-			closeUp();
+		String systemName = "SampleSystem";
+		File directory = new File(systemName);
+		if (!directory.exists()) {
+			directory.mkdirs();
 		}
+		
+		//newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
+		new Exporter(systemName);
+		Input[] sampleIn = new Input[2];
+		Input food = new Input("food", new Tuple(5.0, 6.0));
+		Input service = new Input("service", new Tuple(7.0, 8.0));
+		sampleIn[0] = food;
+		sampleIn[1] = service;
+		Output tip = new Output("tip", new Tuple(4.0, 8.0));
+		prepare(systemName, sampleIn, tip, "rulebase");
+		writeInputs(sampleIn);
+		writeOutputVariable(tip);
+		T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
+		T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
+		T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
+		writeMembershipFunction(badFoodMF);
+		writeMembershipFunction(unfriendlyServiceMF);
+		writeMembershipFunction(lowTipMF);
+		T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
+		writeAntecedent(badFood);
+		T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
+		writeAntecedent(unfriendlyService);
+		T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
+		writeConsequent(lowTip);
+		T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
+		sampleAnts[0] = badFood;
+		sampleAnts[1] = unfriendlyService;
+		writeRuleBase(6);
+		writeRule(sampleAnts, lowTip);
+		writeResult();
+		writeMain(systemName);
+		closeUp();
 	}
 }
