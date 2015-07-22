@@ -12,6 +12,7 @@ import javax.swing.JLabel;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +65,9 @@ public class MainWindow {
 	private int singletonValue;
 	
 	private List<Object> variableList = new ArrayList<Object>();
+	private ArrayList<String> xpaths = new ArrayList<String>();
+	
+	private File mapping = new File("fmlMapping.xml");
 
 	/**
 	 * Launch the application.
@@ -194,7 +198,18 @@ public class MainWindow {
 		mnOptions.add(mntmSystemFromFml);
 		mntmSystemFromFml.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				buildFromFML();
+				try {
+					buildFromFML();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (XPathExpressionException e2) {
+					e2.printStackTrace();
+				} catch (ParserConfigurationException e3) {
+					e3.printStackTrace();
+				} catch (SAXException e4) {
+					e4.printStackTrace();
+				}
 			}
 		});
 		
@@ -210,15 +225,21 @@ public class MainWindow {
 		update();
 	}
 	
-	private void buildFromFML() {
+	private void buildFromFML() throws IOException, XPathExpressionException, ParserConfigurationException, SAXException {
 		JFileChooser browser = new JFileChooser();
-		FileNameExtensionFilter filter = new FileNameExtensionFilter("Fuzzy Markup Language files", "fml");
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("Fuzzy Markup Language file", "fml");
 		browser.setFileFilter(filter);
 		int returnValue = browser.showOpenDialog(frmEfemeler);
 		if (returnValue == JFileChooser.APPROVE_OPTION) {
-			System.out.println(browser.getSelectedFile().getPath());
-			FMLParser parser = new FMLParser();
+			String filename = browser.getSelectedFile().getPath();
+			int slashIndex = filename.lastIndexOf("\\");
+			int dotIndex = filename.lastIndexOf(".");
+			filename = filename.substring(slashIndex+1, dotIndex);
+			FMLParser parser = new FMLParser(filename);
 			// parse FML file and build system from there - code should be in FMLParser.java
+			xpaths = parser.getExpressions(mapping);
+			parser.parseFile(browser.getSelectedFile(), xpaths);
+			parser.closeUp();
 		}
 	}
 	

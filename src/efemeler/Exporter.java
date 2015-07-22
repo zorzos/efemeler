@@ -30,24 +30,22 @@ public class Exporter {
 		try {
 			File systemFolder = new File(name);
 			systemFolder.mkdirs();
-			newFIS = new PrintWriter(System.getProperty("user.dir") + "/" + name + "/" + name + ".java", "UTF-8");
+			newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + name + File.separator + name + ".java", "UTF-8");
 			File[] sources  = { new File(System.getProperty("user.dir") + "/src/generic/"), 
 								new File(System.getProperty("user.dir") + "/src/tools/"), 
 								new File(System.getProperty("user.dir") + "/src/type1/") };
 
-			File[] targets = { 	new File(System.getProperty("user.dir") + "/" + name + "/generic/"), 
-								new File(System.getProperty("user.dir") + "/" + name + "/tools/"), 
-								new File(System.getProperty("user.dir") + "/" + name + "/type1/") };
+			File[] targets = { 	new File(System.getProperty("user.dir") + File.separator + name + "/generic/"), 
+								new File(System.getProperty("user.dir") + File.separator + name + "/tools/"), 
+								new File(System.getProperty("user.dir") + File.separator + name + "/type1/") };
 
 			for (int i=0; i<sources.length; i++) {
 				copyFolder(sources[i], targets[i]);
 			}
 			
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -55,7 +53,7 @@ public class Exporter {
 	private static void copyFolder(File source, File target) throws IOException {
 		if(source.isDirectory()){
 			 
-    		//if directory not exists, create it
+    		//if directory does not exist, create it
     		if(!target.exists()){
     			target.mkdir();
  
@@ -246,42 +244,42 @@ public class Exporter {
 	}
 	
 	public static void main(String args[]) throws IOException {
-		String systemName = "SampleSystem";
-		File directory = new File(systemName);
-		if (!directory.exists()) {
-			directory.mkdirs();
-		}
-		
-		//newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
-		new Exporter(systemName);
-		Input[] sampleIn = new Input[2];
-		Input food = new Input("food", new Tuple(5.0, 6.0));
-		Input service = new Input("service", new Tuple(7.0, 8.0));
-		sampleIn[0] = food;
-		sampleIn[1] = service;
-		Output tip = new Output("tip", new Tuple(4.0, 8.0));
-		prepare(systemName, sampleIn, tip, "rulebase");
-		writeInputs(sampleIn);
-		writeOutputVariable(tip);
-		T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
-		T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
-		T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
-		writeMembershipFunction(badFoodMF);
-		writeMembershipFunction(unfriendlyServiceMF);
-		writeMembershipFunction(lowTipMF);
-		T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
-		writeAntecedent(badFood);
-		T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
-		writeAntecedent(unfriendlyService);
-		T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
-		writeConsequent(lowTip);
-		T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
-		sampleAnts[0] = badFood;
-		sampleAnts[1] = unfriendlyService;
-		writeRuleBase(6);
-		writeRule(sampleAnts, lowTip);
-		writeResult();
-		writeMain(systemName);
-		closeUp();
+//		String systemName = "SampleSystem";
+//		File directory = new File(systemName);
+//		if (!directory.exists()) {
+//			directory.mkdirs();
+//		}
+//		
+//		//newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
+//		new Exporter(systemName);
+//		Input[] sampleIn = new Input[2];
+//		Input food = new Input("food", new Tuple(5.0, 6.0));
+//		Input service = new Input("service", new Tuple(7.0, 8.0));
+//		sampleIn[0] = food;
+//		sampleIn[1] = service;
+//		Output tip = new Output("tip", new Tuple(4.0, 8.0));
+//		prepare(systemName, sampleIn, tip, "rulebase");
+//		writeInputs(sampleIn);
+//		writeOutputVariable(tip);
+//		T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
+//		T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
+//		T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
+//		writeMembershipFunction(badFoodMF);
+//		writeMembershipFunction(unfriendlyServiceMF);
+//		writeMembershipFunction(lowTipMF);
+//		T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
+//		writeAntecedent(badFood);
+//		T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
+//		writeAntecedent(unfriendlyService);
+//		T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
+//		writeConsequent(lowTip);
+//		T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
+//		sampleAnts[0] = badFood;
+//		sampleAnts[1] = unfriendlyService;
+//		writeRuleBase(6);
+//		writeRule(sampleAnts, lowTip);
+//		writeResult();
+//		writeMain(systemName);
+//		closeUp();
 	}
 }

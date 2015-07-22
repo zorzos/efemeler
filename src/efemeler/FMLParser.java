@@ -1,11 +1,8 @@
 package efemeler;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -17,11 +14,12 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import generic.*;
+import type1.sets.*;
+import type1.system.*;
 
 public class FMLParser {
 	
@@ -33,16 +31,27 @@ public class FMLParser {
 	private static String ruleName, ruleConnector, ruleOperator, ruleWeight;
 	private static NodeList clauseVariables, clauseTerms;
 	private static String[] antecedentVars, antecedentTerms, consequentVars, consequentTerms;
-	private static String modifier;
+
 	
 	private static ArrayList<String> xpaths = new ArrayList<String>();
-	private static int[] parameters;
+	private static double[] parameters;
 	
 	private static Input[] collectedInputs;
+	private static Output output;
+	private static T1_Antecedent[] ants;
+	private static T1_Consequent con;
+	private static Exporter systemFile;
+	private static ArrayList<T1MF_Prototype> functions;
+	
+	public FMLParser(String name) throws IOException {
+		systemFile = new Exporter(name);
+	}
+	
+	public static void closeUp() {
+		systemFile.closeUp();
+	}
 	
 	public static void parseFile(File file, ArrayList<String> paths) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
-		System.out.println("File: " + file.getName());
-		System.out.println("Path: " + file.getAbsolutePath());
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 		domFactory.setNamespaceAware(true); 
 		DocumentBuilder builder = domFactory.newDocumentBuilder();
@@ -64,21 +73,59 @@ public class FMLParser {
 					break;
 				case "//FuzzyVariable/@name":
 					NodeList res = getMultipleResults(xpath.compile(xpaths.get(i)), doc);
+					collectedInputs = new Input[res.getLength()-1];
 					for (int j=0; j<res.getLength(); j++) {
 						fuzzyVariableName = res.item(j).getNodeValue();
 						fuzzyVariableDomainLeft = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@domainleft"), doc);
 						fuzzyVariableDomainRight = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@domainright"), doc);
 						fuzzyVariableScale = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@scale"), doc);
 						fuzzyVariableType = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@type"), doc);
+						Tuple domain = new Tuple(Double.parseDouble(fuzzyVariableDomainLeft), Double.parseDouble(fuzzyVariableDomainRight));
+						
+						if (fuzzyVariableType.equals("Input")) {
+							Input variable = new Input(fuzzyVariableName, domain);
+							variable.setScale(fuzzyVariableScale);
+							collectedInputs[j] = variable;
+						}
+						
+						if (fuzzyVariableType.equals("Output")) {
+							output = new Output(fuzzyVariableName, domain);
+							output.setScale(fuzzyVariableScale);
+						}
+						
 						NodeList variableTerms = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm"), doc);
 						for (int k=0; k<variableTerms.getLength(); k++) {
 							fuzzyTermName = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/@name"), doc);
 							fuzzyTermComplement = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/@complement"), doc);
 							functionName = getSingleResult(xpath.compile("name(//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*)"), doc);
 							NodeList functionParams = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*/@*"), doc);
-							parameters = new int[functionParams.getLength()];
+							parameters = new double[functionParams.getLength()];
+							
 							for (int l=0; l<functionParams.getLength(); l++) {
-								parameters[l] = Integer.parseInt(functionParams.item(l).getNodeValue());
+								parameters[l] = Double.parseDouble(functionParams.item(l).getNodeValue());
+							}
+							
+							switch (functionName) {
+								case "TrapezoidShape":
+									T1MF_Trapezoidal trapezoidal = new T1MF_Trapezoidal(fuzzyTermName, parameters);
+									systemFile.writeMembershipFunction(trapezoidal);
+									functions.add(trapezoidal);
+									break;
+								case "TriangularShape":
+									T1MF_Triangular triangular = new T1MF_Triangular(fuzzyTermName, parameters[0], parameters[1], parameters[2]);
+									systemFile.writeMembershipFunction(triangular);
+									functions.add(triangular);
+									break;
+								case "GaussianShape":
+									T1MF_Gaussian gaussian = new T1MF_Gaussian(fuzzyTermName, parameters[0], parameters[1]);
+									systemFile.writeMembershipFunction(gaussian);
+									functions.add(gaussian);
+									break;
+								case "SingletonShape":
+									T1MF_Singleton singleton = new T1MF_Singleton(fuzzyTermName, parameters[0]);
+									systemFile.writeMembershipFunction(singleton);
+									functions.add(singleton);
+									break;
 							}
 						}
 					}
@@ -99,53 +146,69 @@ public class FMLParser {
 							ruleWeight = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@weight"), doc);
 							
 							NodeList antecedent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause"), doc);
+							ants = new T1_Antecedent[antecedent.getLength()];
 							for (int l=0; l<antecedent.getLength(); l++) {
-								modifier = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/@modifier"), doc);
 								clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Variable/text()"), doc);
 								clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Term/text()"), doc);
 								antecedentVars = new String[clauseVariables.getLength()];
 								antecedentTerms = new String[clauseTerms.getLength()];
 								for (int m=0; m<antecedent.getLength(); m++) {
 									antecedentVars[m] = clauseVariables.item(m).getNodeValue();
-									if (!modifier.isEmpty()) {
-										antecedentTerms[m] = modifier + " " + clauseTerms.item(m).getNodeValue();
-									} else {
-										antecedentTerms[m] = clauseTerms.item(m).getNodeValue();
+									antecedentTerms[m] = clauseTerms.item(m).getNodeValue();
+								}
+								
+																
+								for (int n=0; n<clauseVariables.getLength(); n++) {
+									for (int o=0; o<collectedInputs.length; o++) {
+										if (clauseVariables.item(n).toString().equals(collectedInputs[o].getName())) {
+											for (int p=0; p<functions.size(); p++) {
+												if (clauseTerms.item(n).toString().equals(functions.get(p).getName())) {
+													T1_Antecedent ant = new T1_Antecedent(clauseTerms.item(n).toString() + clauseVariables.item(n).toString(), functions.get(p), collectedInputs[o]);
+													systemFile.writeAntecedent(ant);
+													ants[l] = ant;
+												}
+											}
+										}
 									}
 								}
 							}
 							
+							
+							
 							NodeList consequent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause"), doc);
 							for (int l=0; l<consequent.getLength(); l++) {
-								modifier = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/@modifier"), doc);
 								clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Variable/text()"), doc);
 								clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Term/text()"), doc);
 								consequentVars = new String[clauseVariables.getLength()];
 								consequentTerms = new String[clauseTerms.getLength()];
 								for (int m=0; m<consequent.getLength(); m++) {
 									consequentVars[m] = clauseVariables.item(m).getNodeValue();
-									if (!modifier.isEmpty()) {
-										consequentTerms[m] = modifier+ " " + clauseTerms.item(m).getNodeValue();
-									} else {
-										consequentTerms[m] = clauseTerms.item(m).getNodeValue();
+									consequentTerms[m] = clauseTerms.item(m).getNodeValue();
+								}
+								
+								for (int n=0; n<clauseVariables.getLength(); n++) {
+									if (clauseVariables.item(n).toString().equals(output.getName())) {
+										for (int p=0; p<functions.size(); p++) {
+											if (clauseTerms.item(n).toString().equals(functions.get(p).getName())) {
+												T1_Consequent con = new T1_Consequent(clauseTerms.item(n).toString() + clauseVariables.item(n).toString(), functions.get(p), output);
+												systemFile.writeConsequent(con);
+											}
+										}
 									}
 								}
 							}
-							
-							for (int n=0; n<antecedent.getLength(); n++) {
-								System.out.println(antecedentVars[n] + " " + antecedentTerms[n]);
-							}
-							
-							for (int o=0; o<consequent.getLength(); o++) {
-								System.out.println(consequentVars[o] + " " + consequentTerms[o]);
-							}
+							systemFile.writeRule(ants, con);
 						}
+						systemFile.writeRuleBase(rules.getLength());
 					}
 					break;
 				default:
 					break;
 			}
 		}
+		
+		systemFile.prepare(fuzzyControllerName, collectedInputs, output, ruleBaseName);
+		
 	}
 	
 	private static String getSingleResult(XPathExpression expr, Document doc) throws XPathExpressionException {
@@ -158,14 +221,6 @@ public class FMLParser {
 		Object result = expr.evaluate(doc, XPathConstants.NODESET);
 		NodeList multipleResults = (NodeList) result;
 		return multipleResults;
-	}
-	
-	public static String getFuzzyControllerName() {
-		return fuzzyControllerName;
-	}
-	
-	public static String fuzzyControllerIP() {
-		return fuzzyControllerIP;
 	}
 	
 	public static ArrayList<String> getExpressions(File mapping) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
@@ -204,47 +259,10 @@ public class FMLParser {
 	}
 
 	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
-		
-//		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-//		domFactory.setNamespaceAware(true); 
-//		DocumentBuilder builder = domFactory.newDocumentBuilder();
-//		Document doc = builder.parse("fmlMapping");
-//		XPathFactory factory = XPathFactory.newInstance();
-//		XPath xpath = factory.newXPath();
-//		
-//		String currDir = System.getProperty("user.dir");
-//		XPathExpression expr = xpath.compile("//class[@value]//files//location/@value");
-//		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-//		NodeList nodes = (NodeList) result;
-//		for (int i=0; i<nodes.getLength(); i++) {
-//			String path = currDir + nodes.item(i).getNodeValue().toString().trim();
-//			System.out.println(path);
-//			File[] files = new File(path).listFiles();
-//			String locat = nodes.item(i).getNodeValue().toString().trim();
-//			String directory = "";
-//			parseFiles(files, locat);
-//		}
-		
 		File exampleFML = new File("tipperNew.fml");
 		File mapping = new File("fmlMapping.xml");
 		
 		xpaths = getExpressions(mapping);
-		parseFile(exampleFML, xpaths);
-		
-//		SINGLE ANSWER
-//		doc = builder.parse(exampleFML);
-//		expr = xpath.compile("name(//FuzzyVariable[@name=\'" + variableName + "\']/FuzzyTerm[@name=\'" + termName + "\']/*)");
-//		Object mfNameObject = expr.evaluate(doc);
-//		String mfName = mfNameObject.toString();
-//		System.out.println(mfName);
-		
-//		MULTIPLE ANSWERS
-//		doc = builder.parse(exampleFML);
-//		expr = xpath.compile("//FuzzyVariable[@name=\'building\']/FuzzyTerm[@name=\'good\']/*/@*");
-//		Object attr = expr.evaluate(doc, XPathConstants.NODESET);
-//		NodeList attrs = (NodeList) attr;
-//		for (int i=0; i<attrs.getLength(); i++) {
-//			System.out.println(attrs.item(i).getNodeValue());
-//		}		
+		parseFile(exampleFML, xpaths);		
 	}
 }
