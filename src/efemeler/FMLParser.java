@@ -39,9 +39,11 @@ public class FMLParser {
 	private static Input[] collectedInputs;
 	private static Output output;
 	private static T1_Antecedent[] ants;
-	private static T1_Consequent con;
+	private static T1_Consequent[] cons;
 	private static Exporter systemFile;
 	private static ArrayList<T1MF_Prototype> functions;
+	private static String[] rulebaseNames;
+	private static int inputCount, outputCount = 0;
 	
 	public FMLParser(String name) throws IOException {
 		systemFile = new Exporter(name);
@@ -73,7 +75,6 @@ public class FMLParser {
 					break;
 				case "//FuzzyVariable/@name":
 					NodeList res = getMultipleResults(xpath.compile(xpaths.get(i)), doc);
-					collectedInputs = new Input[res.getLength()-1];
 					for (int j=0; j<res.getLength(); j++) {
 						fuzzyVariableName = res.item(j).getNodeValue();
 						fuzzyVariableDomainLeft = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@domainleft"), doc);
@@ -85,12 +86,13 @@ public class FMLParser {
 						if (fuzzyVariableType.equals("Input")) {
 							Input variable = new Input(fuzzyVariableName, domain);
 							variable.setScale(fuzzyVariableScale);
-							collectedInputs[j] = variable;
+							inputCount++;
 						}
 						
 						if (fuzzyVariableType.equals("Output")) {
 							output = new Output(fuzzyVariableName, domain);
 							output.setScale(fuzzyVariableScale);
+							outputCount++;
 						}
 						
 						NodeList variableTerms = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm"), doc);
@@ -132,7 +134,9 @@ public class FMLParser {
 					break;
 				case "//RuleBase/@name":
 					NodeList ruleBases = getMultipleResults(xpath.compile(xpaths.get(i)), doc);
+					rulebaseNames = new String[ruleBases.getLength()];
 					for (int j=0; j<ruleBases.getLength(); j++) {
+						rulebaseNames[j] = ruleBases.item(j).toString();
 						ruleBaseName = getSingleResult(xpath.compile(xpaths.get(i)), doc);
 						ruleBaseAndMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@andMethod"), doc);
 						ruleBaseOrMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@orMethod"), doc);
@@ -176,6 +180,7 @@ public class FMLParser {
 							
 							
 							NodeList consequent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause"), doc);
+							cons = new T1_Consequent[consequent.getLength()];
 							for (int l=0; l<consequent.getLength(); l++) {
 								clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Variable/text()"), doc);
 								clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Term/text()"), doc);
@@ -192,23 +197,23 @@ public class FMLParser {
 											if (clauseTerms.item(n).toString().equals(functions.get(p).getName())) {
 												T1_Consequent con = new T1_Consequent(clauseTerms.item(n).toString() + clauseVariables.item(n).toString(), functions.get(p), output);
 												systemFile.writeConsequent(con);
+												cons[l] = con;
 											}
 										}
 									}
 								}
 							}
-							systemFile.writeRule(ants, con);
+							systemFile.writeRule(ruleBaseName, ants, cons);
 						}
-						systemFile.writeRuleBase(rules.getLength());
+						systemFile.writeRuleBase(ruleBaseName, rules.getLength());
+						systemFile.writeResult(ruleBaseName);
 					}
+					systemFile.prepare(fuzzyControllerName, collectedInputs, output, rulebaseNames);
 					break;
 				default:
 					break;
 			}
-		}
-		
-		systemFile.prepare(fuzzyControllerName, collectedInputs, output, ruleBaseName);
-		
+		}		
 	}
 	
 	private static String getSingleResult(XPathExpression expr, Document doc) throws XPathExpressionException {

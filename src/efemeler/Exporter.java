@@ -24,7 +24,7 @@ public class Exporter {
 	private static PrintWriter newFIS;
 	private static String rulebaseName;
 	private static Input[] inputs;
-	private static Output output;
+	private static Output[] outputs;
 	
 	public Exporter(String name) throws IOException {
 		try {
@@ -100,7 +100,7 @@ public class Exporter {
 		return newName;
 	}
 	
-	public static void prepare(String systemName, Input[] inputs, Output output, String rbName) {
+	public static void prepare(String systemName, Input[] inputs, Output output, String[] rbNames) {
 		newFIS.println("import generic.*;");
 		newFIS.println("import type1.sets.*;");
 		newFIS.println("import type1.system.*;");
@@ -114,11 +114,13 @@ public class Exporter {
 		newFIS.println();
 		newFIS.println("\tOuput " + output.getName() + ";");
 		newFIS.println();
-		newFIS.println("\tT1_Rulebase " + rbName + ";");
-		newFIS.println();
+		for (int i=0; i<rbNames.length; i++) {
+			newFIS.println("Rulebase " + rbNames[i] + ";");
+			newFIS.println();
+		}
+		
 		newFIS.println("\tpublic " + systemName + "() { ");
 		newFIS.println();
-		rulebaseName = rbName;
 	}
 	
 	public static void writeInputs(Input[] vars) {
@@ -129,10 +131,12 @@ public class Exporter {
 		inputs = vars;
 	}
 	
-	public static void writeOutputVariable(Output var) {
-		newFIS.println("\t\t" + var.getName() + " = new Output(\""+var.getName()+"\", new Tuple("+ var.getDomain().getLeft() + ", " + var.getDomain().getRight() + "));");
+	public static void writeOutputs(Output[] vars) {
+		for (int i=0; i<vars.length; i++) {
+			newFIS.println("\t\t" + vars[i].getName() + " = new Output(\""+vars[i].getName()+"\", new Tuple("+ vars[i].getDomain().getLeft() + ", " + vars[i].getDomain().getRight() + "));");
+		}
 		newFIS.println();
-		output = var;
+		outputs = vars;
 	}
 	
 	public static void writeMembershipFunction(T1MF_Prototype mf) {
@@ -183,12 +187,12 @@ public class Exporter {
 		newFIS.println();
 	}
 	
-	public static void writeRuleBase(int size) {
-		newFIS.println("\t\t" + rulebaseName + " = new T1_Rulebase(" + size +");");
+	public static void writeRuleBase(String name, int size) {
+		newFIS.println("\t\t" + name + " = new T1_Rulebase(" + size +");");
 		newFIS.println();
 	}
 	
-	public static void writeRule(T1_Antecedent[] antecedents, T1_Consequent consequent) {
+	public static void writeRule(String rulebase, T1_Antecedent[] antecedents, T1_Consequent[] consequents) {
 		String antecedentNames = "";
 		for (int i=0; i<antecedents.length; i++) {
 			if (i==0) {
@@ -197,11 +201,20 @@ public class Exporter {
 				antecedentNames += ", " + getVariableName(antecedents[i].getName());
 			}
 		}
-		newFIS.println("\t\t" + rulebaseName + ".addRule(new T1_Rule(new T1_Antecedent[]{" + antecedentNames + "}, " + getVariableName(consequent.getName()) + "));");
+		
+		String consequentNames = "";
+		for (int j=0; j<consequents.length; j++) {
+			if (j==0) {
+				consequentNames += getVariableName(consequents[j].getName());
+			} else {
+				consequentNames += ", " + getVariableName(consequents[j].getName());
+			}
+		}
+		newFIS.println("\t\t" + rulebase + ".addRule(new T1_Rule(new T1_Antecedent[]{" + antecedentNames + "}, new T1_Consequent[]{" + consequentNames + "}));");
 		newFIS.println();
 	}
 	
-	public static void writeResult() {
+	public static void writeResult(String rulebaseName) {
 		String inputString = "";
 		String[] setInputs = new String[inputs.length];
 		String[] systemOuts = new String[inputs.length + 2];
@@ -220,12 +233,26 @@ public class Exporter {
 			newFIS.println(setInputs[j]);
 		}
 		
-		systemOuts[inputs.length] = "\t\t\tSystem.out.println(\"Using height defuzzification, the FLS recommends a tip of:\" + " + rulebaseName +".evaluate(0).get(" + getVariableName(output.getName()) + "));";
-		systemOuts[inputs.length + 1] = "\t\t\tSystem.out.println(\"Using centroid defuzzification, the FLS recommends a tip of:\" + " + rulebaseName +".evaluate(1).get(" + getVariableName(output.getName()) + "));";
+		newFIS.println("TreeMap<Output, Double> output;");
+		newFIS.println("output = " + rulebaseName + ".evaluate(0);");
+		
+		String defuzz = "";
+		for (int l=0; l<outputs.length; l++) {
+			if (l==0) {
+				defuzz += outputs[l].getName() + " of output.get(" + getVariableName(outputs[l].getName()) + ");";
+			} else {
+				defuzz += ", " + outputs[l].getName() + " of output.get(" + getVariableName(outputs[l].getName()) + ");";
+			}
+		}
+		
+		systemOuts[inputs.length] = "\t\t\tSystem.out.println(\"Using height defuzzification, the FLS recommends a " + defuzz;
 		
 		for (int k=0; k<systemOuts.length; k++) {
 			newFIS.println(systemOuts[k]);
 		}
+		
+		newFIS.println("output = " + rulebaseName + ".evaluate(1);");
+		newFIS.println("\t\t\tSystem.out.println(\"Using centroid defuzzification, the FLS recommends a " + defuzz);
 		
 		newFIS.println("\t\t}");
 		newFIS.println();
@@ -278,7 +305,7 @@ public class Exporter {
 //		sampleAnts[1] = unfriendlyService;
 //		writeRuleBase(6);
 //		writeRule(sampleAnts, lowTip);
-//		writeResult();
+//		writeResult(tip);
 //		writeMain(systemName);
 //		closeUp();
 	}

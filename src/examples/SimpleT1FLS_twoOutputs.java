@@ -122,11 +122,9 @@ public class SimpleT1FLS_twoOutputs
         System.out.println("The service was: "+service.getInput());
         TreeMap<Output, Double> output;
         output = rulebase.evaluate(0);
-        System.out.println("Using height defuzzification, the FLS recommends a tip of: "
-                +output.get(tip)+" and a smile of: "+output.get(smile)); 
+        System.out.println("Using height defuzzification, the FLS recommends a tip of: "+output.get(tip)+" and a smile of: "+output.get(smile)); 
         output = rulebase.evaluate(1);
-        System.out.println("Using centroid defuzzification, the FLS recommends a tip of: "
-                +output.get(tip)+" and a smile of: "+output.get(smile));      
+        System.out.println("Using centroid defuzzification, the FLS recommends a tip of: "+output.get(tip)+" and a smile of: "+output.get(smile));      
     }
     
     private void plotMFs(String name, T1MF_Interface[] sets, Tuple xAxisRange, int discretizationLevel)
