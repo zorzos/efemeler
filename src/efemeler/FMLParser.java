@@ -1,8 +1,17 @@
 package efemeler;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,21 +45,30 @@ public class FMLParser {
 	private static ArrayList<String> xpaths = new ArrayList<String>();
 	private static double[] parameters;
 	
-	private static Input[] collectedInputs;
-	private static Output output;
+	private static ArrayList<Input> collectedInputs = new ArrayList<Input>();
+	private static ArrayList<Output> collectedOutputs = new ArrayList<Output>();
 	private static T1_Antecedent[] ants;
 	private static T1_Consequent[] cons;
-	private static Exporter systemFile;
-	private static ArrayList<T1MF_Prototype> functions;
+	private static ArrayList<T1MF_Prototype> functions = new ArrayList<T1MF_Prototype>();
 	private static String[] rulebaseNames;
-	private static int inputCount, outputCount = 0;
+	private static int[] rulebaseSizes;
+	private static PrintWriter newFIS;
+	private static ArrayList<T1_Rule> rulesList = new ArrayList<T1_Rule>();
+	private static Map<String, ArrayList<T1_Rule>> ruleMap = new HashMap<String, ArrayList<T1_Rule>>();
 	
-	public FMLParser(String name) throws IOException {
-		systemFile = new Exporter(name);
-	}
-	
-	public static void closeUp() {
-		systemFile.closeUp();
+	public FMLParser(File file) throws XPathExpressionException, ParserConfigurationException, SAXException, IOException{
+		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+		domFactory.setNamespaceAware(true); 
+		DocumentBuilder builder = domFactory.newDocumentBuilder();
+		Document doc = builder.parse(file.getAbsolutePath());
+		XPathFactory factory = XPathFactory.newInstance();
+		XPath xpath = factory.newXPath();
+		String systemName = getSingleResult(xpath.compile("//FuzzyController/@name"), doc);
+		File directory = new File(systemName);
+		if (!directory.exists()) {
+			directory.mkdirs();
+		}
+		newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
 	}
 	
 	public static void parseFile(File file, ArrayList<String> paths) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
@@ -60,10 +78,6 @@ public class FMLParser {
 		Document doc = builder.parse(file.getAbsolutePath());
 		XPathFactory factory = XPathFactory.newInstance();
 		XPath xpath = factory.newXPath();
-		
-//		for (int i=0; i<xpaths.size(); i++) {
-//			System.out.println(xpaths.get(i).toString());
-//		}
 		
 		for (int i=0; i<xpaths.size(); i++) {
 			switch (xpaths.get(i).toString()) {
@@ -83,22 +97,21 @@ public class FMLParser {
 						fuzzyVariableType = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@type"), doc);
 						Tuple domain = new Tuple(Double.parseDouble(fuzzyVariableDomainLeft), Double.parseDouble(fuzzyVariableDomainRight));
 						
-						if (fuzzyVariableType.equals("Input")) {
-							Input variable = new Input(fuzzyVariableName, domain);
-							variable.setScale(fuzzyVariableScale);
-							inputCount++;
+						if (fuzzyVariableType.equals("input")) {
+							Input inVar = new Input(fuzzyVariableName, domain);
+							inVar.setScale(fuzzyVariableScale);
+							collectedInputs.add(inVar);
 						}
 						
-						if (fuzzyVariableType.equals("Output")) {
-							output = new Output(fuzzyVariableName, domain);
-							output.setScale(fuzzyVariableScale);
-							outputCount++;
+						if (fuzzyVariableType.equals("output")) {
+							Output outVar = new Output(fuzzyVariableName, domain);
+							outVar.setScale(fuzzyVariableScale);
+							collectedOutputs.add(outVar);
 						}
 						
-						NodeList variableTerms = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm"), doc);
+						NodeList variableTerms = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm/@name"), doc);
 						for (int k=0; k<variableTerms.getLength(); k++) {
-							fuzzyTermName = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/@name"), doc);
-							fuzzyTermComplement = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/@complement"), doc);
+							fuzzyTermName = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+variableTerms.item(k).getNodeValue()+"\"]/@name"), doc);
 							functionName = getSingleResult(xpath.compile("name(//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*)"), doc);
 							NodeList functionParams = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*/@*"), doc);
 							parameters = new double[functionParams.getLength()];
@@ -110,22 +123,18 @@ public class FMLParser {
 							switch (functionName) {
 								case "TrapezoidShape":
 									T1MF_Trapezoidal trapezoidal = new T1MF_Trapezoidal(fuzzyTermName, parameters);
-									systemFile.writeMembershipFunction(trapezoidal);
 									functions.add(trapezoidal);
 									break;
 								case "TriangularShape":
 									T1MF_Triangular triangular = new T1MF_Triangular(fuzzyTermName, parameters[0], parameters[1], parameters[2]);
-									systemFile.writeMembershipFunction(triangular);
 									functions.add(triangular);
 									break;
 								case "GaussianShape":
 									T1MF_Gaussian gaussian = new T1MF_Gaussian(fuzzyTermName, parameters[0], parameters[1]);
-									systemFile.writeMembershipFunction(gaussian);
 									functions.add(gaussian);
 									break;
 								case "SingletonShape":
 									T1MF_Singleton singleton = new T1MF_Singleton(fuzzyTermName, parameters[0]);
-									systemFile.writeMembershipFunction(singleton);
 									functions.add(singleton);
 									break;
 							}
@@ -135,14 +144,16 @@ public class FMLParser {
 				case "//RuleBase/@name":
 					NodeList ruleBases = getMultipleResults(xpath.compile(xpaths.get(i)), doc);
 					rulebaseNames = new String[ruleBases.getLength()];
+					rulebaseSizes = new int[ruleBases.getLength()];
 					for (int j=0; j<ruleBases.getLength(); j++) {
-						rulebaseNames[j] = ruleBases.item(j).toString();
+						rulebaseNames[j] = getVariableName(ruleBases.item(j).getNodeValue().toString());
 						ruleBaseName = getSingleResult(xpath.compile(xpaths.get(i)), doc);
 						ruleBaseAndMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@andMethod"), doc);
 						ruleBaseOrMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@orMethod"), doc);
 						ruleBaseActivationMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@activationMethod"), doc);
 						ruleBaseType = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@type"), doc);
 						NodeList rules = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule/@name"), doc);
+						rulebaseSizes[j] = rules.getLength();
 						for (int k=0; k<rules.getLength(); k++) {
 							ruleName = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@name"), doc);
 							ruleConnector = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@connector"), doc);
@@ -163,21 +174,22 @@ public class FMLParser {
 								
 																
 								for (int n=0; n<clauseVariables.getLength(); n++) {
-									for (int o=0; o<collectedInputs.length; o++) {
-										if (clauseVariables.item(n).toString().equals(collectedInputs[o].getName())) {
+									for (int o=0; o<collectedInputs.size(); o++) {
+										if (clauseVariables.item(n).getNodeValue().equals(collectedInputs.get(o).getName())) {
 											for (int p=0; p<functions.size(); p++) {
-												if (clauseTerms.item(n).toString().equals(functions.get(p).getName())) {
-													T1_Antecedent ant = new T1_Antecedent(clauseTerms.item(n).toString() + clauseVariables.item(n).toString(), functions.get(p), collectedInputs[o]);
-													systemFile.writeAntecedent(ant);
+												if (clauseTerms.item(n).getNodeValue().equals(functions.get(p).getName())) {
+													System.out.println(clauseVariables.item(n).getNodeValue());
+													System.out.println(collectedInputs.get(o).getName());
+													System.out.println(clauseTerms.item(n).getNodeValue());
+													System.out.println(functions.get(p).getName());
+													T1_Antecedent ant = new T1_Antecedent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), functions.get(p), collectedInputs.get(o));
 													ants[l] = ant;
 												}
 											}
 										}
 									}
 								}
-							}
-							
-							
+							}						
 							
 							NodeList consequent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause"), doc);
 							cons = new T1_Consequent[consequent.getLength()];
@@ -192,30 +204,76 @@ public class FMLParser {
 								}
 								
 								for (int n=0; n<clauseVariables.getLength(); n++) {
-									if (clauseVariables.item(n).toString().equals(output.getName())) {
-										for (int p=0; p<functions.size(); p++) {
-											if (clauseTerms.item(n).toString().equals(functions.get(p).getName())) {
-												T1_Consequent con = new T1_Consequent(clauseTerms.item(n).toString() + clauseVariables.item(n).toString(), functions.get(p), output);
-												systemFile.writeConsequent(con);
-												cons[l] = con;
+									for (int q=0; q<collectedOutputs.size(); q++) {
+										if (clauseVariables.item(n).getNodeValue().equals(collectedOutputs.get(q).getName())) {
+											for (int p=0; p<functions.size(); p++) {
+												if (clauseTerms.item(n).getNodeValue().equals(functions.get(p).getName())) {
+													T1_Consequent con = new T1_Consequent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), functions.get(p), collectedOutputs.get(q));
+													cons[l] = con;
+												}
 											}
 										}
 									}
 								}
 							}
-							systemFile.writeRule(ruleBaseName, ants, cons);
+							
 						}
-						systemFile.writeRuleBase(ruleBaseName, rules.getLength());
-						systemFile.writeResult(ruleBaseName);
+						T1_Rule rule = new T1_Rule(ants, cons);
+						rulesList.add(rule);
 					}
-					systemFile.prepare(fuzzyControllerName, collectedInputs, output, rulebaseNames);
+					ruleMap.put(ruleBaseName, rulesList);
 					break;
 				default:
 					break;
 			}
-		}		
+		}
+		
+		// Prepare file - writing variables
+		prepare(fuzzyControllerName, collectedInputs, collectedOutputs, rulebaseNames);
+		
+		// Write membership functions
+		for (int x=0; x<functions.size(); x++) {
+			writeMembershipFunction(functions.get(x));
+		}
+		
+		// Write antecedents
+		for (int y=0; y<ants.length; y++) {
+			writeAntecedent(ants[y]);
+		}
+		
+		// Write consequents
+		for (int z=0; z<cons.length; z++) {
+			writeConsequent(cons[z]);
+		}
+		
+		// Write rulebases
+		for (int h=0; h<rulebaseNames.length; h++) {
+			writeRuleBase(rulebaseNames[h], rulebaseSizes[h]);
+		}
+		
+		// Write rules
+		for(Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
+			for (int f=0; f<entry.getValue().size(); f++) {
+				writeRule(entry.getKey(), entry.getValue().get(f));
+			}
+		}
+		
+		// Write result method
+		for (int b=0; b<rulebaseNames.length; b++) {
+			writeResult(rulebaseNames[b]);
+		}
+		
+		writeMain(fuzzyControllerName);
+		
+		closeUp();
 	}
 	
+	public static void closeUp() {
+		newFIS.println("\t}");
+		newFIS.println("}");
+		newFIS.close();
+	}
+
 	private static String getSingleResult(XPathExpression expr, Document doc) throws XPathExpressionException {
 		Object result = expr.evaluate(doc);
 		String singleResult = result.toString();
@@ -262,11 +320,253 @@ public class FMLParser {
 		
 		return xpaths;
 	}
+	
+	private static void copyFolder(File source, File target) throws IOException {
+		if(source.isDirectory()){
+			 
+    		//if directory does not exist, create it
+    		if(!target.exists()){
+    			target.mkdir();
+ 
+    			//list all the directory contents
+    			String files[] = source.list();
+ 
+	    		for (String file : files) {
+	    		   //construct the src and dest file structure
+	    		   File srcFile = new File(source, file);
+	    		   File destFile = new File(target, file);
+	    		   //recursive copy
+	    		   copyFolder(srcFile,destFile);
+	    		}
+    		}
+    	} else {
+    		//if file, then copy it
+    		//Use bytes stream to support all file types
+	    		InputStream in = new FileInputStream(source);
+    	        OutputStream out = new FileOutputStream(target); 
+ 
+    	        byte[] buffer = new byte[1024];
+ 
+    	        int length;
+    	        //copy the file content in bytes 
+    	        while ((length = in.read(buffer)) > 0){
+    	    	   out.write(buffer, 0, length);
+    	        }
+ 
+    	        in.close();
+    	        out.close();
+	    }
+	}
+	
+	private static String getVariableName(String name) {
+		name = name.toLowerCase();
+		String[] words = name.split(" ");
+		for (int i=1; i<words.length; i++) {
+			words[i] = words[i].replace(words[i].substring(0, 1), words[i].substring(0, 1).toUpperCase());
+		}
+		String newName = "";
+		for (int j=0; j<words.length; j++) {
+			newName = newName + words[j];
+		}
+		return newName;
+	}
+	
+	public static void prepare(String systemName, ArrayList<Input> inputs, ArrayList<Output> outputs, String[] rbNames) {
+		try {
+			File directory = new File(systemName);
+			if (!directory.exists()) {
+				directory.mkdirs();
+			}
+			File[] sources  = { new File(System.getProperty("user.dir") + "/src/generic/"), 
+								new File(System.getProperty("user.dir") + "/src/tools/"), 
+								new File(System.getProperty("user.dir") + "/src/type1/") };
+
+			File[] targets = { 	new File(System.getProperty("user.dir") + File.separator + systemName + "/generic/"), 
+								new File(System.getProperty("user.dir") + File.separator + systemName + "/tools/"), 
+								new File(System.getProperty("user.dir") + File.separator + systemName + "/type1/") };
+
+			for (int i=0; i<sources.length; i++) {
+				copyFolder(sources[i], targets[i]);
+			}
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		newFIS.println("import generic.*;");
+		newFIS.println("import type1.sets.*;");
+		newFIS.println("import type1.system.*;");
+		newFIS.println();
+		newFIS.println("public class " + systemName + " { ");
+		newFIS.println();
+		for (int i=0; i<inputs.size(); i++) {
+			newFIS.println("\tInput " + inputs.get(i).getName() + ";");
+		}
+		
+		newFIS.println();
+		for (int i=0; i<outputs.size(); i++) {
+			newFIS.println("\tOuput " + outputs.get(i).getName() + ";");
+		}
+		newFIS.println();
+		for (int i=0; i<rbNames.length; i++) {
+			newFIS.println("\tT1_Rulebase " + rbNames[i] + ";");
+			newFIS.println();
+		}
+		
+		newFIS.println("\tpublic " + systemName + "() { ");
+		newFIS.println();
+	}
+	
+	public static void writeInputs(ArrayList<Input> vars) {
+		for (int i=0; i<vars.size(); i++) {
+			newFIS.println("\t\t" + vars.get(i).getName() + " = new Input(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
+		}
+		newFIS.println();
+		collectedInputs = vars;
+	}
+	
+	public static void writeOutputs(ArrayList<Output> vars) {
+		for (int i=0; i<vars.size(); i++) {
+			newFIS.println("\t\t" + vars.get(i).getName() + " = new Output(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
+		}
+		newFIS.println();
+		collectedOutputs = vars;
+	}
+	
+	public static void writeMembershipFunction(T1MF_Prototype mf) {
+		String variableName = getVariableName(mf.getName()) + "MF";
+		String mfType = mf.getClass().getSimpleName();
+		switch (mfType) {
+			case "T1MF_Singleton":
+				T1MF_Singleton singleton = (T1MF_Singleton) mf;
+				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + singleton.getName() + "\", " + singleton.getValue() + ");");
+				newFIS.println();
+				break;
+			case "T1MF_Gaussian":
+				T1MF_Gaussian gaussian = (T1MF_Gaussian) mf;
+				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + gaussian.getName() + "\", " + gaussian.getMean() + ", " + gaussian.getSpread() + ");");
+				newFIS.println();
+				break;
+			case "T1MF_Gauangle":
+				T1MF_Gauangle gauangle = (T1MF_Gauangle) mf;
+				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + gauangle.getName() + "\", " + gauangle.getStart() + ", " + gauangle.getMean() + ", " + gauangle.getEnd() + ");");
+				newFIS.println();
+				break;
+			case "T1MF_Triangular":
+				T1MF_Triangular triangular = (T1MF_Triangular) mf;
+				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + triangular.getName() + "\", " + triangular.getStart() + ", " + triangular.getPeak() + ", " + triangular.getEnd() + ");");
+				newFIS.println();
+				break;
+			case "T1MF_Trapezoidal":
+				T1MF_Trapezoidal trapezoidal = (T1MF_Trapezoidal) mf;
+				newFIS.println("\t\tdouble[] parameters;");
+				newFIS.println("\t\tparameters[0] = " + trapezoidal.getA());
+				newFIS.println("\t\tparameters[1] = " + trapezoidal.getB());
+				newFIS.println("\t\tparameters[2] = " + trapezoidal.getC());
+				newFIS.println("\t\tparameters[3] = " + trapezoidal.getD());
+				newFIS.println("\t\tparameters[0] = " + trapezoidal.getA());
+				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + trapezoidal.getName() + "\", " + "parameters);");
+				newFIS.println();
+				break;
+		}
+	}
+	
+	public static void writeAntecedent(T1_Antecedent antecedent) {
+		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
+		newFIS.println();
+	}
+
+	public static void writeConsequent(T1_Consequent consequent) {
+		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
+		newFIS.println();
+	}
+	
+	public static void writeRuleBase(String name, int size) {
+		newFIS.println("\t\t" + name + " = new T1_Rulebase(" + size +");");
+		newFIS.println();
+	}
+	
+	public static void writeRule(String rulebase, T1_Rule rule) {
+		String antecedentNames = "";
+		for (int i=0; i<rule.getAntecedents().length; i++) {
+			if (i==0) {
+				antecedentNames += getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+			} else {
+				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+			}
+		}
+		
+		String consequentNames = "";
+		for (int j=0; j<rule.getConsequents().length; j++) {
+			if (j==0) {
+				consequentNames += getVariableName(rule.getConsequents()[j].getName());
+			} else {
+				consequentNames += ", " + getVariableName(rule.getConsequents()[j].getName());
+			}
+		}
+		newFIS.println("\t\t" + getVariableName(rulebase) + ".addRule(new T1_Rule(new T1_Antecedent[]{" + antecedentNames + "}, new T1_Consequent[]{" + consequentNames + "}));");
+		newFIS.println();
+	}
+
+	public static void writeResult(String rulebaseName) {
+		String inputString = "";
+		String[] setInputs = new String[collectedInputs.size()];
+		String[] systemOuts = new String[collectedInputs.size() + 2];
+		for (int i=0; i<collectedInputs.size(); i++) {
+			if (i==0) {
+				inputString += "double " + getVariableName(collectedInputs.get(i).getName()) + "Input";
+			} else {
+				inputString += ", double " + getVariableName(collectedInputs.get(i).getName()) + "Input";
+			}
+			setInputs[i] = getVariableName("\t\t\t" + collectedInputs.get(i).getName()) + ".setInput(" + getVariableName(collectedInputs.get(i).getName()) + "Input);";
+			systemOuts[i] = "\t\t\tSystem.out.println(\"The "+ collectedInputs.get(i).getName() +" was: \" + " + getVariableName(collectedInputs.get(i).getName()) + ".getInput());";
+		}
+		
+		newFIS.println("\t\tpublic void getResult(" + inputString + ") {");
+		for (int j=0; j<setInputs.length; j++) {
+			newFIS.println(setInputs[j]);
+		}
+		
+		newFIS.println("\t\t\tTreeMap<Output, Double> output;");
+		newFIS.println("\t\t\toutput = " + rulebaseName + ".evaluate(0);");
+		
+		String defuzz = "";
+		for (int l=0; l<collectedOutputs.size(); l++) {
+			if (l==0) {
+				defuzz += collectedOutputs.get(l).getName() + " of\" + output.get(" + getVariableName(collectedOutputs.get(l).getName()) + "));";
+			} else {
+				defuzz += ", " + collectedOutputs.get(l).getName() + " of\" + output.get(" + getVariableName(collectedOutputs.get(l).getName()) + "));";
+			}
+		}
+		
+		systemOuts[collectedInputs.size()] = "\t\t\tSystem.out.println(\"Using height defuzzification, the FLS recommends a " + defuzz;
+		
+		for (int k=0; k<systemOuts.length-1; k++) {
+			newFIS.println(systemOuts[k]);
+		}
+		
+		newFIS.println("\t\t\toutput = " + rulebaseName + ".evaluate(1);");
+		newFIS.println("\t\t\tSystem.out.println(\"Using centroid defuzzification, the FLS recommends a " + defuzz);
+		
+		newFIS.println("\t\t}");
+		newFIS.println();
+	}
+	
+	public static void writeMain(String name) {
+		newFIS.println("\t\tpublic static void main(String[] args) {");
+		newFIS.println("\t\t\t new " + name + "();" );
+		newFIS.println("\t\t}");
+	}
 
 	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
 		File exampleFML = new File("tipperNew.fml");
 		File mapping = new File("fmlMapping.xml");
-		
+
+		new FMLParser(exampleFML);
 		xpaths = getExpressions(mapping);
 		parseFile(exampleFML, xpaths);		
 	}

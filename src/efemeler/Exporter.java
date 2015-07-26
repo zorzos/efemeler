@@ -16,15 +16,16 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 import static java.nio.file.StandardCopyOption.*;
 
 public class Exporter {
 	
-	private static PrintWriter newFIS;
+	private static PrintWriter newFIS = null;
 	private static String rulebaseName;
-	private static Input[] inputs;
-	private static Output[] outputs;
+	private static ArrayList<Input> inputs;
+	private static ArrayList<Output> outputs;
 	
 	public Exporter(String name) throws IOException {
 		try {
@@ -100,19 +101,44 @@ public class Exporter {
 		return newName;
 	}
 	
-	public static void prepare(String systemName, Input[] inputs, Output output, String[] rbNames) {
+	public static void prepare(String systemName, ArrayList<Input> inputs, ArrayList<Output> outputs, String[] rbNames) {
+		try {
+			File systemFolder = new File(systemName);
+			systemFolder.mkdirs();
+			File[] sources  = { new File(System.getProperty("user.dir") + "/src/generic/"), 
+								new File(System.getProperty("user.dir") + "/src/tools/"), 
+								new File(System.getProperty("user.dir") + "/src/type1/") };
+
+			File[] targets = { 	new File(System.getProperty("user.dir") + File.separator + systemName + "/generic/"), 
+								new File(System.getProperty("user.dir") + File.separator + systemName + "/tools/"), 
+								new File(System.getProperty("user.dir") + File.separator + systemName + "/type1/") };
+
+			for (int i=0; i<sources.length; i++) {
+				copyFolder(sources[i], targets[i]);
+			}
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		newFIS.println("import generic.*;");
 		newFIS.println("import type1.sets.*;");
 		newFIS.println("import type1.system.*;");
 		newFIS.println();
 		newFIS.println("public class " + systemName + " { ");
 		newFIS.println();
-		for (int i=0; i<inputs.length; i++) {
-			newFIS.println("\tInput " + inputs[i].getName() + ";");
+		for (int i=0; i<inputs.size(); i++) {
+			newFIS.println("\tInput " + inputs.get(i).getName() + ";");
 		}
 		
 		newFIS.println();
-		newFIS.println("\tOuput " + output.getName() + ";");
+		for (int i=0; i<outputs.size(); i++) {
+			newFIS.println("\tOuput " + outputs.get(i).getName() + ";");
+		}
 		newFIS.println();
 		for (int i=0; i<rbNames.length; i++) {
 			newFIS.println("Rulebase " + rbNames[i] + ";");
@@ -123,17 +149,17 @@ public class Exporter {
 		newFIS.println();
 	}
 	
-	public static void writeInputs(Input[] vars) {
-		for (int i=0; i<vars.length; i++) {
-			newFIS.println("\t\t" + vars[i].getName() + " = new Input(\""+vars[i].getName()+"\", new Tuple("+ vars[i].getDomain().getLeft() + ", " + vars[i].getDomain().getRight() + "));");
+	public static void writeInputs(ArrayList<Input> vars) {
+		for (int i=0; i<vars.size(); i++) {
+			newFIS.println("\t\t" + vars.get(i).getName() + " = new Input(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
 		}
 		newFIS.println();
 		inputs = vars;
 	}
 	
-	public static void writeOutputs(Output[] vars) {
-		for (int i=0; i<vars.length; i++) {
-			newFIS.println("\t\t" + vars[i].getName() + " = new Output(\""+vars[i].getName()+"\", new Tuple("+ vars[i].getDomain().getLeft() + ", " + vars[i].getDomain().getRight() + "));");
+	public static void writeOutputs(ArrayList<Output> vars) {
+		for (int i=0; i<vars.size(); i++) {
+			newFIS.println("\t\t" + vars.get(i).getName() + " = new Output(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
 		}
 		newFIS.println();
 		outputs = vars;
@@ -192,40 +218,40 @@ public class Exporter {
 		newFIS.println();
 	}
 	
-	public static void writeRule(String rulebase, T1_Antecedent[] antecedents, T1_Consequent[] consequents) {
+	public static void writeRule(String rulebase, T1_Rule rule) {
 		String antecedentNames = "";
-		for (int i=0; i<antecedents.length; i++) {
+		for (int i=0; i<rule.getAntecedents().length; i++) {
 			if (i==0) {
-				antecedentNames += getVariableName(antecedents[i].getName());
+				antecedentNames += getVariableName(rule.getAntecedents()[i].getName());
 			} else {
-				antecedentNames += ", " + getVariableName(antecedents[i].getName());
+				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName());
 			}
 		}
 		
 		String consequentNames = "";
-		for (int j=0; j<consequents.length; j++) {
+		for (int j=0; j<rule.getConsequents().length; j++) {
 			if (j==0) {
-				consequentNames += getVariableName(consequents[j].getName());
+				consequentNames += getVariableName(rule.getConsequents()[j].getName());
 			} else {
-				consequentNames += ", " + getVariableName(consequents[j].getName());
+				consequentNames += ", " + getVariableName(rule.getConsequents()[j].getName());
 			}
 		}
 		newFIS.println("\t\t" + rulebase + ".addRule(new T1_Rule(new T1_Antecedent[]{" + antecedentNames + "}, new T1_Consequent[]{" + consequentNames + "}));");
 		newFIS.println();
 	}
-	
+
 	public static void writeResult(String rulebaseName) {
 		String inputString = "";
-		String[] setInputs = new String[inputs.length];
-		String[] systemOuts = new String[inputs.length + 2];
-		for (int i=0; i<inputs.length; i++) {
+		String[] setInputs = new String[inputs.size()];
+		String[] systemOuts = new String[inputs.size() + 2];
+		for (int i=0; i<inputs.size(); i++) {
 			if (i==0) {
-				inputString += "double " + getVariableName(inputs[i].getName()) + "Input";
+				inputString += "double " + getVariableName(inputs.get(i).getName()) + "Input";
 			} else {
-				inputString += ", double " + getVariableName(inputs[i].getName()) + "Input";
+				inputString += ", double " + getVariableName(inputs.get(i).getName()) + "Input";
 			}
-			setInputs[i] = getVariableName("\t\t\t" + inputs[i].getName()) + ".setInput(" + getVariableName(inputs[i].getName()) + "Input);";
-			systemOuts[i] = "\t\t\tSystem.out.println(\"The "+ inputs[i].getName() +" was: \" + " + getVariableName(inputs[i].getName()) + ".getInput());";
+			setInputs[i] = getVariableName("\t\t\t" + inputs.get(i).getName()) + ".setInput(" + getVariableName(inputs.get(i).getName()) + "Input);";
+			systemOuts[i] = "\t\t\tSystem.out.println(\"The "+ inputs.get(i).getName() +" was: \" + " + getVariableName(inputs.get(i).getName()) + ".getInput());";
 		}
 		
 		newFIS.println("\t\tpublic void getResult(" + inputString + ") {");
@@ -233,25 +259,25 @@ public class Exporter {
 			newFIS.println(setInputs[j]);
 		}
 		
-		newFIS.println("TreeMap<Output, Double> output;");
-		newFIS.println("output = " + rulebaseName + ".evaluate(0);");
+		newFIS.println("\t\t\tTreeMap<Output, Double> output;");
+		newFIS.println("\t\t\toutput = " + rulebaseName + ".evaluate(0);");
 		
 		String defuzz = "";
-		for (int l=0; l<outputs.length; l++) {
+		for (int l=0; l<outputs.size(); l++) {
 			if (l==0) {
-				defuzz += outputs[l].getName() + " of output.get(" + getVariableName(outputs[l].getName()) + ");";
+				defuzz += outputs.get(l).getName() + " of output.get(" + getVariableName(outputs.get(l).getName()) + ");";
 			} else {
-				defuzz += ", " + outputs[l].getName() + " of output.get(" + getVariableName(outputs[l].getName()) + ");";
+				defuzz += ", " + outputs.get(l).getName() + " of output.get(" + getVariableName(outputs.get(l).getName()) + ");";
 			}
 		}
 		
-		systemOuts[inputs.length] = "\t\t\tSystem.out.println(\"Using height defuzzification, the FLS recommends a " + defuzz;
+		systemOuts[inputs.size()] = "\t\t\tSystem.out.println(\"Using height defuzzification, the FLS recommends a " + defuzz;
 		
-		for (int k=0; k<systemOuts.length; k++) {
+		for (int k=0; k<systemOuts.length-1; k++) {
 			newFIS.println(systemOuts[k]);
 		}
 		
-		newFIS.println("output = " + rulebaseName + ".evaluate(1);");
+		newFIS.println("\t\t\toutput = " + rulebaseName + ".evaluate(1);");
 		newFIS.println("\t\t\tSystem.out.println(\"Using centroid defuzzification, the FLS recommends a " + defuzz);
 		
 		newFIS.println("\t\t}");
@@ -269,44 +295,53 @@ public class Exporter {
 		newFIS.println("}");
 		newFIS.close();
 	}
-	
+
 	public static void main(String args[]) throws IOException {
-//		String systemName = "SampleSystem";
-//		File directory = new File(systemName);
-//		if (!directory.exists()) {
-//			directory.mkdirs();
-//		}
-//		
-//		//newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
-//		new Exporter(systemName);
-//		Input[] sampleIn = new Input[2];
-//		Input food = new Input("food", new Tuple(5.0, 6.0));
-//		Input service = new Input("service", new Tuple(7.0, 8.0));
-//		sampleIn[0] = food;
-//		sampleIn[1] = service;
-//		Output tip = new Output("tip", new Tuple(4.0, 8.0));
-//		prepare(systemName, sampleIn, tip, "rulebase");
-//		writeInputs(sampleIn);
-//		writeOutputVariable(tip);
-//		T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
-//		T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
-//		T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
-//		writeMembershipFunction(badFoodMF);
-//		writeMembershipFunction(unfriendlyServiceMF);
-//		writeMembershipFunction(lowTipMF);
-//		T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
-//		writeAntecedent(badFood);
-//		T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
-//		writeAntecedent(unfriendlyService);
-//		T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
-//		writeConsequent(lowTip);
-//		T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
-//		sampleAnts[0] = badFood;
-//		sampleAnts[1] = unfriendlyService;
-//		writeRuleBase(6);
-//		writeRule(sampleAnts, lowTip);
-//		writeResult(tip);
-//		writeMain(systemName);
-//		closeUp();
+		String systemName = "SampleSystem";
+		File directory = new File(systemName);
+		if (!directory.exists()) {
+			directory.mkdirs();
+		}
+		
+		//newFIS = new PrintWriter(System.getProperty("user.dir") + "/example/" + systemName + ".java", "UTF-8");
+		new Exporter(systemName);
+		ArrayList<Input> in = new ArrayList<Input>();
+		Input food = new Input("food", new Tuple(5.0, 6.0));
+		Input service = new Input("service", new Tuple(7.0, 8.0));
+		in.add(food);
+		in.add(service);
+		ArrayList<Output> out = new ArrayList<Output>();
+		Output tip = new Output("tip", new Tuple(4.0, 8.0));
+		out.add(tip);
+		String[] names = new String[1];
+		names[0] = "rulebase";
+		prepare(systemName, in, out, names);
+		writeInputs(in);
+		writeOutputs(out);
+		T1MF_Triangular badFoodMF = new T1MF_Triangular("Bad Food",0.0, 0.0, 10.0);
+		T1MF_Gauangle unfriendlyServiceMF = new T1MF_Gauangle("Unfriendly Service",0.0, 0.0, 6.0);
+		T1MF_Gaussian lowTipMF = new T1MF_Gaussian("Low tip", 0.0, 6.0);
+		writeMembershipFunction(badFoodMF);
+		writeMembershipFunction(unfriendlyServiceMF);
+		writeMembershipFunction(lowTipMF);
+		T1_Antecedent badFood = new T1_Antecedent("BadFood",badFoodMF, food);
+		writeAntecedent(badFood);
+		T1_Antecedent unfriendlyService = new T1_Antecedent("UnfriendlyService",unfriendlyServiceMF, service);
+		writeAntecedent(unfriendlyService);
+		T1_Consequent lowTip = new T1_Consequent("LowTip", lowTipMF, tip);
+		writeConsequent(lowTip);
+		T1_Antecedent[] sampleAnts = new T1_Antecedent[2];
+		T1_Consequent[] sampleCons = new T1_Consequent[1];
+		sampleCons[0] = lowTip;
+		sampleAnts[0] = badFood;
+		sampleAnts[1] = unfriendlyService;
+		T1_Rule rule = new T1_Rule(sampleAnts, sampleCons);
+		for (int i=0; i<names.length; i++) {
+			writeRuleBase(names[i], 6);
+		}
+		writeRule(names[0], rule);
+		writeResult(names[0]);
+		writeMain(systemName);
+		closeUp();
 	}
 }

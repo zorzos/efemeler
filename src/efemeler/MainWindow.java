@@ -235,7 +235,7 @@ public class MainWindow {
 			int slashIndex = filename.lastIndexOf("\\");
 			int dotIndex = filename.lastIndexOf(".");
 			filename = filename.substring(slashIndex+1, dotIndex);
-			FMLParser parser = new FMLParser(filename);
+			FMLParser parser = new FMLParser(browser.getSelectedFile());
 			// parse FML file and build system from there - code should be in FMLParser.java
 			xpaths = parser.getExpressions(mapping);
 			parser.parseFile(browser.getSelectedFile(), xpaths);
