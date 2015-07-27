@@ -178,10 +178,6 @@ public class FMLParser {
 										if (clauseVariables.item(n).getNodeValue().equals(collectedInputs.get(o).getName())) {
 											for (int p=0; p<functions.size(); p++) {
 												if (clauseTerms.item(n).getNodeValue().equals(functions.get(p).getName())) {
-													System.out.println(clauseVariables.item(n).getNodeValue());
-													System.out.println(collectedInputs.get(o).getName());
-													System.out.println(clauseTerms.item(n).getNodeValue());
-													System.out.println(functions.get(p).getName());
 													T1_Antecedent ant = new T1_Antecedent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), functions.get(p), collectedInputs.get(o));
 													ants[l] = ant;
 												}
@@ -216,12 +212,12 @@ public class FMLParser {
 									}
 								}
 							}
-							
+							T1_Rule rule = new T1_Rule(ants, cons);
+							rulesList.add(rule);
 						}
-						T1_Rule rule = new T1_Rule(ants, cons);
-						rulesList.add(rule);
+						ruleMap.put(ruleBaseName, rulesList);
+						//rulesList.clear();
 					}
-					ruleMap.put(ruleBaseName, rulesList);
 					break;
 				default:
 					break;
@@ -252,11 +248,11 @@ public class FMLParser {
 		}
 		
 		// Write rules
-		for(Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
-			for (int f=0; f<entry.getValue().size(); f++) {
+		for (Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
+		 	for (int f=0; f<entry.getValue().size(); f++) {
 				writeRule(entry.getKey(), entry.getValue().get(f));
 			}
-		}
+		 }
 		
 		// Write result method
 		for (int b=0; b<rulebaseNames.length; b++) {
@@ -463,12 +459,12 @@ public class FMLParser {
 				break;
 			case "T1MF_Trapezoidal":
 				T1MF_Trapezoidal trapezoidal = (T1MF_Trapezoidal) mf;
-				newFIS.println("\t\tdouble[] parameters;");
+				newFIS.println("\t\tdouble[] " + variableName + "Parameters = new double[4];");
 				newFIS.println("\t\tparameters[0] = " + trapezoidal.getA());
 				newFIS.println("\t\tparameters[1] = " + trapezoidal.getB());
 				newFIS.println("\t\tparameters[2] = " + trapezoidal.getC());
 				newFIS.println("\t\tparameters[3] = " + trapezoidal.getD());
-				newFIS.println("\t\tparameters[0] = " + trapezoidal.getA());
+				newFIS.println();
 				newFIS.println("\t\t" + mfType + " " + variableName + " = new " + mfType + "(\"" + trapezoidal.getName() + "\", " + "parameters);");
 				newFIS.println();
 				break;
