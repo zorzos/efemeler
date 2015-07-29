@@ -122,14 +122,14 @@ public class AddVariable extends JDialog {
 	
 	public Input getInputVariable() {
 		String name = txtName.getText();
-		Tuple domain = new Tuple(Integer.parseInt(domainLower.getText()), Integer.parseInt(domainUpper.getText()));
+		Tuple domain = new Tuple(Double.parseDouble(domainLower.getText()), Double.parseDouble(domainUpper.getText()));
 		String scale = txtScale.getText();
 		return new Input(name, domain, scale);
 	}
 	
 	public Output getOutputVariable() {
 		String name = txtName.getText();
-		Tuple domain = new Tuple(Integer.parseInt(domainLower.getText()), Integer.parseInt(domainUpper.getText()));
+		Tuple domain = new Tuple(Double.parseDouble(domainLower.getText()), Double.parseDouble(domainUpper.getText()));
 		String scale = txtScale.getText();
 		return new Output(name, domain, scale);		
 	}

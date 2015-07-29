@@ -2,6 +2,7 @@ package efemeler;
 
 import generic.Input;
 import generic.Output;
+import type1.sets.*;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -17,6 +18,7 @@ import javax.swing.JComboBox;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JCheckBox;
@@ -79,14 +81,16 @@ public class AddMembershipFunction extends JDialog {
 	private JLabel trapezoidalPointDLbl;
 	private JTextField trapezoidalPointDText;
 	
-	private static List<Object> variableList;
+	private static ArrayList<Input> in;
+	private static ArrayList<Output> out;
+	private static T1MF_Prototype function;
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
 		try {
-			AddMembershipFunction dialog = new AddMembershipFunction(variableList);
+			AddMembershipFunction dialog = new AddMembershipFunction(in, out);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
@@ -97,7 +101,7 @@ public class AddMembershipFunction extends JDialog {
 	/**
 	 * Create the dialog.
 	 */
-	public AddMembershipFunction(List<Object> variableList) {
+	public AddMembershipFunction(ArrayList<Input> inputs, ArrayList<Output> outputs) {
 		setModal(true);
 		setTitle("Add Membership Function");
 		setBounds(100, 100, 452, 344);
@@ -402,15 +406,13 @@ public class AddMembershipFunction extends JDialog {
 		
 		JComboBox variableComboBox = new JComboBox();
 		variableComboBox.setBounds(57, 38, 156, 20);
-		contentPanel.add(variableComboBox);
-		for (int i = 0; i<variableList.size(); i++)	{
-			if (variableList.get(i).getClass().getSimpleName().equals("Input")) {
-				Input input = (Input) variableList.get(i);
-				variableComboBox.addItem(input.getName());
-			} else if (variableList.get(i).getClass().getSimpleName().equals("Output")) {
-				Output output = (Output) variableList.get(i);
-				variableComboBox.addItem(output.getName());
-			}
+		contentPanel.add(variableComboBox);		
+		for (int i=0; i<inputs.size(); i++) {
+			variableComboBox.addItem(inputs.get(i).getName());
+		}
+		
+		for (int j=0; j<outputs.size(); j++) {
+			variableComboBox.addItem(outputs.get(j).getName());;
 		}
 		{
 			JPanel buttonPane = new JPanel();
@@ -422,6 +424,41 @@ public class AddMembershipFunction extends JDialog {
 					public void actionPerformed(ActionEvent arg0) {
 						String currentSelection = (String)mfTypeBox.getSelectedItem();
 						System.out.println(currentSelection);
+						
+						String mfType = (String)mfTypeBox.getSelectedItem();
+						String name = txtName.getText();
+						switch (mfType) {
+							case "Singleton":
+								double value = Double.parseDouble(singletonValueText.getText());
+								function = new T1MF_Singleton(name, value);
+								break;
+							case "Triangular":
+								double triStart = Double.parseDouble(triangularStartText.getText());
+								double peak = Double.parseDouble(triangularPeakText.getText());
+								double triEnd = Double.parseDouble(triangularEndText.getText());
+								function = new T1MF_Triangular(name, triStart, peak, triEnd);
+								break;
+							case "Gaussian":
+								double mean = Double.parseDouble(gaussianMeanText.getText());
+								double spread = Double.parseDouble(gaussianSpreadText.getText());
+								function = new T1MF_Gaussian(name, mean, spread);
+								break;
+							case "Gauangle":
+								double gauStart = Double.parseDouble(gauangleStartText.getText());
+								double center = Double.parseDouble(gauangleCentreText.getText());
+								double gauEnd = Double.parseDouble(gauangleEndText.getText());
+								function = new T1MF_Gauangle(name, gauStart, center, gauEnd);
+								break;
+							case "Trapezoidal":
+								double[] parameters = new double[4];
+								parameters[0] = Double.parseDouble(trapezoidalPointAText.getText());
+								parameters[1] = Double.parseDouble(trapezoidalPointBText.getText());
+								parameters[2] = Double.parseDouble(trapezoidalPointCText.getText());
+								parameters[3] = Double.parseDouble(trapezoidalPointDText.getText());
+								function = new T1MF_Trapezoidal(name, parameters);
+								break;
+						}
+						
 						dispose();
 					}
 				});
@@ -442,8 +479,8 @@ public class AddMembershipFunction extends JDialog {
 		}
 	}
 	
-	public String getSingletonValue() {
-		return singletonValueText.getText();
+	public T1MF_Prototype getFunction() {
+		return function;
 	}
 	
 	private void hideAll() {

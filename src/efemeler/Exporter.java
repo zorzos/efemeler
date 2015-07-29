@@ -51,6 +51,10 @@ public class Exporter {
 		}
 	}
 	
+	public PrintWriter getFile() {
+		return newFIS;
+	}
+	
 	private static void copyFolder(File source, File target) throws IOException {
 		if(source.isDirectory()){
 			 
@@ -105,6 +109,7 @@ public class Exporter {
 		try {
 			File systemFolder = new File(systemName);
 			systemFolder.mkdirs();
+			newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
 			File[] sources  = { new File(System.getProperty("user.dir") + "/src/generic/"), 
 								new File(System.getProperty("user.dir") + "/src/tools/"), 
 								new File(System.getProperty("user.dir") + "/src/type1/") };
@@ -117,6 +122,34 @@ public class Exporter {
 				copyFolder(sources[i], targets[i]);
 			}
 			
+			newFIS.println("import generic.*;");
+			newFIS.println("import type1.sets.*;");
+			newFIS.println("import type1.system.*;");
+			newFIS.println();
+			newFIS.println("public class " + systemName + " { ");
+			newFIS.println();
+			if (inputs.size() != 0) {
+				for (int i=0; i<inputs.size(); i++) {
+					newFIS.println("\tInput " + inputs.get(i).getName() + ";");
+				}
+			} else {
+				System.out.println("empty inputs");
+				newFIS.println("empty inputs");
+			}
+			
+			newFIS.println();
+			for (int i=0; i<outputs.size(); i++) {
+				newFIS.println("\tOuput " + outputs.get(i).getName() + ";");
+			}
+			newFIS.println();
+			for (int i=0; i<rbNames.length; i++) {
+				newFIS.println("Rulebase " + rbNames[i] + ";");
+				newFIS.println();
+			}
+			
+			newFIS.println("\tpublic " + systemName + "() { ");
+			newFIS.println();
+			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (UnsupportedEncodingException e) {
@@ -124,29 +157,6 @@ public class Exporter {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		newFIS.println("import generic.*;");
-		newFIS.println("import type1.sets.*;");
-		newFIS.println("import type1.system.*;");
-		newFIS.println();
-		newFIS.println("public class " + systemName + " { ");
-		newFIS.println();
-		for (int i=0; i<inputs.size(); i++) {
-			newFIS.println("\tInput " + inputs.get(i).getName() + ";");
-		}
-		
-		newFIS.println();
-		for (int i=0; i<outputs.size(); i++) {
-			newFIS.println("\tOuput " + outputs.get(i).getName() + ";");
-		}
-		newFIS.println();
-		for (int i=0; i<rbNames.length; i++) {
-			newFIS.println("Rulebase " + rbNames[i] + ";");
-			newFIS.println();
-		}
-		
-		newFIS.println("\tpublic " + systemName + "() { ");
-		newFIS.println();
 	}
 	
 	public static void writeInputs(ArrayList<Input> vars) {

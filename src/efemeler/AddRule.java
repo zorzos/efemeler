@@ -23,6 +23,8 @@ import java.util.List;
 import javax.swing.JComboBox;
 import javax.swing.JTextField;
 
+import type1.system.T1_Rule;
+
 public class AddRule extends JDialog {
 
 	private final JPanel contentPanel = new JPanel();
@@ -30,24 +32,31 @@ public class AddRule extends JDialog {
 	private int buttonClickCount = 0;
 	private JTextField ruleNameText;
 	private JTextField textField;
+	private static ArrayList<Input> in;
+	private static ArrayList<Output> out;
+	private T1_Rule rule;
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
 		try {
-			AddRule dialog = new AddRule(variableList);
+			AddRule dialog = new AddRule(in, out);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
+	public T1_Rule getRule() {
+		return rule;
+	}
  
 	/**
 	 * Create the dialog.
 	 */
-	public AddRule(List<Object> variableList) {
+	public AddRule(ArrayList<Input> inputs, ArrayList<Output> outputs) {
 		setTitle("Add Rule");
 		setModal(true);
 		setBounds(100, 100, 450, 304);
@@ -76,7 +85,6 @@ public class AddRule extends JDialog {
 		
 		inputComboBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				int selected = inputComboBox.getSelectedIndex();
 			}
 		});
 		
@@ -99,17 +107,13 @@ public class AddRule extends JDialog {
 		outputComboBox.setBounds(10, 181, 99, 20);
 		contentPanel.add(outputComboBox);
 		
-		int inputCount = 0;
-		for (int i = 0; i<variableList.size(); i++)	{
-			if (variableList.get(i).getClass().getSimpleName().equals("Input")) {
-				inputCount++;
-				Input input = (Input) variableList.get(i);
-				inputComboBox.addItem(input.getName());
-			} else if (variableList.get(i).getClass().getSimpleName().equals("Output")) {
-				inputCount++;
-				Output output = (Output) variableList.get(i);
-				outputComboBox.addItem(output.getName());
-			}
+		int inputCount = inputs.size();
+		for (int i=0; i<inputs.size(); i++) {
+			inputComboBox.addItem(inputs.get(i).getName());
+		}
+		
+		for (int j=0; j<outputs.size(); j++) {
+			outputComboBox.addItem(outputs.get(j).getName());;
 		}
 		
 		JLabel lblIs_1 = new JLabel("is");

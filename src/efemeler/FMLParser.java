@@ -39,7 +39,6 @@ public class FMLParser {
 	private static String ruleBaseName, ruleBaseAndMethod, ruleBaseOrMethod, ruleBaseActivationMethod, ruleBaseType;
 	private static String ruleName, ruleConnector, ruleOperator, ruleWeight;
 	private static NodeList clauseVariables, clauseTerms;
-	private static String[] antecedentVars, antecedentTerms, consequentVars, consequentTerms;
 
 	
 	private static ArrayList<String> xpaths = new ArrayList<String>();
@@ -47,14 +46,15 @@ public class FMLParser {
 	
 	private static ArrayList<Input> collectedInputs = new ArrayList<Input>();
 	private static ArrayList<Output> collectedOutputs = new ArrayList<Output>();
-	private static T1_Antecedent[] ants;
-	private static T1_Consequent[] cons;
-	private static ArrayList<T1MF_Prototype> functions = new ArrayList<T1MF_Prototype>();
+	private static ArrayList<T1_Antecedent> ants = new ArrayList<T1_Antecedent>();
+	private static ArrayList<T1_Consequent> cons = new ArrayList<T1_Consequent>();
+	private static T1_Antecedent[] newAnts;
+	private static T1_Consequent[] newCons;
 	private static String[] rulebaseNames;
 	private static int[] rulebaseSizes;
 	private static PrintWriter newFIS;
-	private static ArrayList<T1_Rule> rulesList = new ArrayList<T1_Rule>();
 	private static Map<String, ArrayList<T1_Rule>> ruleMap = new HashMap<String, ArrayList<T1_Rule>>();
+	private static Map<String, ArrayList<T1MF_Prototype>> mappedFunctions = new HashMap<String, ArrayList<T1MF_Prototype>>();
 	
 	public FMLParser(File file) throws XPathExpressionException, ParserConfigurationException, SAXException, IOException{
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
@@ -90,11 +90,12 @@ public class FMLParser {
 				case "//FuzzyVariable/@name":
 					NodeList res = getMultipleResults(xpath.compile(xpaths.get(i)), doc);
 					for (int j=0; j<res.getLength(); j++) {
+						ArrayList<T1MF_Prototype> functions = new ArrayList<T1MF_Prototype>();
 						fuzzyVariableName = res.item(j).getNodeValue();
 						fuzzyVariableDomainLeft = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@domainleft"), doc);
-						fuzzyVariableDomainRight = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@domainright"), doc);
-						fuzzyVariableScale = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@scale"), doc);
-						fuzzyVariableType = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/@type"), doc);
+						fuzzyVariableDomainRight = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/@domainright"), doc);
+						fuzzyVariableScale = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/@scale"), doc);
+						fuzzyVariableType = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/@type"), doc);
 						Tuple domain = new Tuple(Double.parseDouble(fuzzyVariableDomainLeft), Double.parseDouble(fuzzyVariableDomainRight));
 						
 						if (fuzzyVariableType.equals("input")) {
@@ -111,14 +112,16 @@ public class FMLParser {
 						
 						NodeList variableTerms = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm/@name"), doc);
 						for (int k=0; k<variableTerms.getLength(); k++) {
-							fuzzyTermName = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+variableTerms.item(k).getNodeValue()+"\"]/@name"), doc);
-							functionName = getSingleResult(xpath.compile("name(//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*)"), doc);
-							NodeList functionParams = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+res.item(j).getNodeValue()+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*/@*"), doc);
+							fuzzyTermName = getSingleResult(xpath.compile("//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/FuzzyTerm[@name=\""+variableTerms.item(k).getNodeValue()+"\"]/@name"), doc);
+							functionName = getSingleResult(xpath.compile("name(//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*)"), doc);
+							NodeList functionParams = getMultipleResults(xpath.compile("//FuzzyVariable[@name=\""+fuzzyVariableName+"\"]/FuzzyTerm[@name=\""+fuzzyTermName+"\"]/*/@*"), doc);
 							parameters = new double[functionParams.getLength()];
 							
 							for (int l=0; l<functionParams.getLength(); l++) {
 								parameters[l] = Double.parseDouble(functionParams.item(l).getNodeValue());
 							}
+							
+							String newVarName = fuzzyVariableName.replace(fuzzyVariableName.substring(0, 1), fuzzyVariableName.substring(0, 1).toUpperCase());
 							
 							switch (functionName) {
 								case "TrapezoidShape":
@@ -137,8 +140,25 @@ public class FMLParser {
 									T1MF_Singleton singleton = new T1MF_Singleton(fuzzyTermName, parameters[0]);
 									functions.add(singleton);
 									break;
+								case "RightLinearShape":
+									break;
+								case "LeftLinearShape":
+									break;
+								case "PiShape":
+									break;
+								case "RightGaussianShape":
+									break;
+								case "SShape":
+									break;
+								case "ZShape":
+									break;
+								case "RectangularShape":
+									break;
+								default:
+									break;
 							}
 						}
+						mappedFunctions.put(fuzzyVariableName, functions);
 					}
 					break;
 				case "//RuleBase/@name":
@@ -146,6 +166,7 @@ public class FMLParser {
 					rulebaseNames = new String[ruleBases.getLength()];
 					rulebaseSizes = new int[ruleBases.getLength()];
 					for (int j=0; j<ruleBases.getLength(); j++) {
+						ArrayList<T1_Rule> rulesList = new ArrayList<T1_Rule>();
 						rulebaseNames[j] = getVariableName(ruleBases.item(j).getNodeValue().toString());
 						ruleBaseName = getSingleResult(xpath.compile(xpaths.get(i)), doc);
 						ruleBaseAndMethod = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/@andMethod"), doc);
@@ -155,68 +176,58 @@ public class FMLParser {
 						NodeList rules = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule/@name"), doc);
 						rulebaseSizes[j] = rules.getLength();
 						for (int k=0; k<rules.getLength(); k++) {
+							ants.clear();
+							cons.clear();
 							ruleName = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@name"), doc);
 							ruleConnector = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@connector"), doc);
 							ruleOperator = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@operator"), doc);
 							ruleWeight = getSingleResult(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+rules.item(k).getNodeValue()+"\"]/@weight"), doc);
 							
-							NodeList antecedent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause"), doc);
-							ants = new T1_Antecedent[antecedent.getLength()];
-							for (int l=0; l<antecedent.getLength(); l++) {
-								clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Variable/text()"), doc);
-								clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Term/text()"), doc);
-								antecedentVars = new String[clauseVariables.getLength()];
-								antecedentTerms = new String[clauseTerms.getLength()];
-								for (int m=0; m<antecedent.getLength(); m++) {
-									antecedentVars[m] = clauseVariables.item(m).getNodeValue();
-									antecedentTerms[m] = clauseTerms.item(m).getNodeValue();
-								}
-								
-																
-								for (int n=0; n<clauseVariables.getLength(); n++) {
-									for (int o=0; o<collectedInputs.size(); o++) {
-										if (clauseVariables.item(n).getNodeValue().equals(collectedInputs.get(o).getName())) {
-											for (int p=0; p<functions.size(); p++) {
-												if (clauseTerms.item(n).getNodeValue().equals(functions.get(p).getName())) {
-													T1_Antecedent ant = new T1_Antecedent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), functions.get(p), collectedInputs.get(o));
-													ants[l] = ant;
-												}
+							clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Variable/text()"), doc);
+							clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Antecedent/Clause/Term/text()"), doc);
+							for (int n=0; n<clauseVariables.getLength(); n++) {
+								ArrayList<T1MF_Prototype> func = mappedFunctions.get(clauseVariables.item(n).getNodeValue());
+								for (int o=0; o<func.size(); o++) {
+									if (clauseTerms.item(n).getNodeValue().equals(func.get(o).getName())) {
+										for (int p=0;  p<collectedInputs.size(); p++) {
+											if (clauseVariables.item(n).getNodeValue().equals(collectedInputs.get(p).getName())) {
+												T1_Antecedent ant = new T1_Antecedent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), func.get(o), collectedInputs.get(p));
+												ants.add(ant);
 											}
 										}
 									}
 								}
-							}						
+							}					
 							
-							NodeList consequent = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause"), doc);
-							cons = new T1_Consequent[consequent.getLength()];
-							for (int l=0; l<consequent.getLength(); l++) {
-								clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Variable/text()"), doc);
-								clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Term/text()"), doc);
-								consequentVars = new String[clauseVariables.getLength()];
-								consequentTerms = new String[clauseTerms.getLength()];
-								for (int m=0; m<consequent.getLength(); m++) {
-									consequentVars[m] = clauseVariables.item(m).getNodeValue();
-									consequentTerms[m] = clauseTerms.item(m).getNodeValue();
-								}
-								
-								for (int n=0; n<clauseVariables.getLength(); n++) {
-									for (int q=0; q<collectedOutputs.size(); q++) {
-										if (clauseVariables.item(n).getNodeValue().equals(collectedOutputs.get(q).getName())) {
-											for (int p=0; p<functions.size(); p++) {
-												if (clauseTerms.item(n).getNodeValue().equals(functions.get(p).getName())) {
-													T1_Consequent con = new T1_Consequent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), functions.get(p), collectedOutputs.get(q));
-													cons[l] = con;
-												}
+							clauseVariables = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Variable/text()"), doc);
+							clauseTerms = getMultipleResults(xpath.compile("//RuleBase[@name=\""+ruleBaseName+"\"]/Rule[@name=\""+ruleName+"\"]/Consequent/Clause/Term/text()"), doc);
+							for (int n=0; n<clauseVariables.getLength(); n++) {
+								ArrayList<T1MF_Prototype> func = mappedFunctions.get(clauseVariables.item(n).getNodeValue());
+								for (int o=0; o<func.size(); o++) {
+									if (clauseTerms.item(n).getNodeValue().equals(func.get(o).getName())) {
+										for (int p=0;  p<collectedOutputs.size(); p++) {
+											if (clauseVariables.item(n).getNodeValue().equals(collectedOutputs.get(p).getName())) {
+												T1_Consequent con = new T1_Consequent(getVariableName(clauseTerms.item(n).getNodeValue().toString() + clauseVariables.item(n).getNodeValue().toString()), func.get(o), collectedOutputs.get(p));
+												cons.add(con);
 											}
 										}
 									}
 								}
 							}
-							T1_Rule rule = new T1_Rule(ants, cons);
+							newAnts = new T1_Antecedent[ants.size()];
+							for (int y=0; y<ants.size(); y++) {
+								newAnts[y] = ants.get(y);
+							}
+							
+							newCons = new T1_Consequent[cons.size()];
+							for (int u=0; u<cons.size(); u++) {
+								newCons[u] = cons.get(u);
+							}
+							
+							T1_Rule rule = new T1_Rule(newAnts, newCons);
 							rulesList.add(rule);
 						}
 						ruleMap.put(ruleBaseName, rulesList);
-						//rulesList.clear();
 					}
 					break;
 				default:
@@ -228,18 +239,20 @@ public class FMLParser {
 		prepare(fuzzyControllerName, collectedInputs, collectedOutputs, rulebaseNames);
 		
 		// Write membership functions
-		for (int x=0; x<functions.size(); x++) {
-			writeMembershipFunction(functions.get(x));
+		for (Map.Entry<String, ArrayList<T1MF_Prototype>> entry : mappedFunctions.entrySet()) {
+			for (int x=0; x<entry.getValue().size(); x++) {
+				writeMembershipFunction(entry.getKey(), entry.getValue().get(x));
+			}
 		}
 		
 		// Write antecedents
-		for (int y=0; y<ants.length; y++) {
-			writeAntecedent(ants[y]);
+		for (int y=0; y<newAnts.length; y++) {
+			writeAntecedent(newAnts[y]);
 		}
 		
 		// Write consequents
-		for (int z=0; z<cons.length; z++) {
-			writeConsequent(cons[z]);
+		for (int z=0; z<newCons.length; z++) {
+			writeConsequent(newCons[z]);
 		}
 		
 		// Write rulebases
@@ -250,7 +263,7 @@ public class FMLParser {
 		// Write rules
 		for (Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
 		 	for (int f=0; f<entry.getValue().size(); f++) {
-				writeRule(entry.getKey(), entry.getValue().get(f));
+		 		writeRule(entry.getKey(), entry.getValue().get(f));
 			}
 		 }
 		
@@ -433,8 +446,8 @@ public class FMLParser {
 		collectedOutputs = vars;
 	}
 	
-	public static void writeMembershipFunction(T1MF_Prototype mf) {
-		String variableName = getVariableName(mf.getName()) + "MF";
+	public static void writeMembershipFunction(String varName, T1MF_Prototype mf) {
+		String variableName = getVariableName(mf.getName()) + getVariableName(varName) + "MF";
 		String mfType = mf.getClass().getSimpleName();
 		switch (mfType) {
 			case "T1MF_Singleton":
@@ -472,12 +485,12 @@ public class FMLParser {
 	}
 	
 	public static void writeAntecedent(T1_Antecedent antecedent) {
-		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
+		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + antecedent.getInput().getName() + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
 		newFIS.println();
 	}
 
 	public static void writeConsequent(T1_Consequent consequent) {
-		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
+		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + consequent.getOutput().getName() + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
 		newFIS.println();
 	}
 	
