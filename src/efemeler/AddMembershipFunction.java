@@ -28,6 +28,7 @@ public class AddMembershipFunction extends JDialog {
 	private final JPanel contentPanel = new JPanel();
 	private JTextField txtName;
 	private JComboBox mfTypeBox;
+	private Object connectedVariable;
 	
 	// Singleton membership value
 	private JLabel singletonValueLbl;
@@ -101,7 +102,7 @@ public class AddMembershipFunction extends JDialog {
 	/**
 	 * Create the dialog.
 	 */
-	public AddMembershipFunction(ArrayList<Input> inputs, ArrayList<Output> outputs) {
+	public AddMembershipFunction(final ArrayList<Input> inputs, final ArrayList<Output> outputs) {
 		setModal(true);
 		setTitle("Add Membership Function");
 		setBounds(100, 100, 452, 344);
@@ -404,7 +405,7 @@ public class AddMembershipFunction extends JDialog {
 		lblVariable.setBounds(10, 41, 46, 14);
 		contentPanel.add(lblVariable);
 		
-		JComboBox variableComboBox = new JComboBox();
+		final JComboBox variableComboBox = new JComboBox();
 		variableComboBox.setBounds(57, 38, 156, 20);
 		contentPanel.add(variableComboBox);		
 		for (int i=0; i<inputs.size(); i++) {
@@ -423,7 +424,20 @@ public class AddMembershipFunction extends JDialog {
 				okButton.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent arg0) {
 						String currentSelection = (String)mfTypeBox.getSelectedItem();
-						System.out.println(currentSelection);
+						//System.out.println(currentSelection);
+						
+						String variableSelection = (String)variableComboBox.getSelectedItem();
+						for (int i=0; i<inputs.size(); i++) {
+							if (variableSelection.equals(inputs.get(i).getName())) {
+								connectedVariable = inputs.get(i);
+							}
+						}
+						
+						for (int j=0; j<outputs.size(); j++) {
+							if (variableSelection.equals(outputs.get(j).getName())) {
+								connectedVariable = outputs.get(j);
+							}
+						}
 						
 						String mfType = (String)mfTypeBox.getSelectedItem();
 						String name = txtName.getText();
@@ -481,6 +495,10 @@ public class AddMembershipFunction extends JDialog {
 	
 	public T1MF_Prototype getFunction() {
 		return function;
+	}
+	
+	public Object getVariable() {
+		return connectedVariable;
 	}
 	
 	private void hideAll() {

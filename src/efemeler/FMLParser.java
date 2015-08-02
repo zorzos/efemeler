@@ -1,3 +1,9 @@
+/**
+ * Class FMLParser
+ * 
+ * @author Rafail Zorzos
+ * @version 1.0 August 2015
+ */
 package efemeler;
 
 import java.io.File;
@@ -56,6 +62,16 @@ public class FMLParser {
 	private static Map<String, ArrayList<T1_Rule>> ruleMap = new HashMap<String, ArrayList<T1_Rule>>();
 	private static Map<String, ArrayList<T1MF_Prototype>> mappedFunctions = new HashMap<String, ArrayList<T1MF_Prototype>>();
 	
+	/**
+	 * Creates an instance of FMLParser
+	 * Gets the name of the system and creates the system folder and file.
+	 * 
+	 * @param file the folder to be created for storing the system files
+	 * @throws XPathExpressionException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 */
 	public FMLParser(File file) throws XPathExpressionException, ParserConfigurationException, SAXException, IOException{
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 		domFactory.setNamespaceAware(true); 
@@ -71,6 +87,17 @@ public class FMLParser {
 		newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
 	}
 	
+	/**
+	 * Parses the specified file and fills the class variables with the information describing the Fuzzy inference system.
+	 * Afterwards it calls the rest of the methods of this class to build the system file.
+	 * 
+	 * @param file the Fuzzy Markup Language file to be processed
+	 * @param paths the file containing the XPath expressions to be evaluated over the first file
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws XPathExpressionException
+	 */
 	public static void parseFile(File file, ArrayList<String> paths) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 		domFactory.setNamespaceAware(true); 
@@ -238,6 +265,12 @@ public class FMLParser {
 		// Prepare file - writing variables
 		prepare(fuzzyControllerName, collectedInputs, collectedOutputs, rulebaseNames);
 		
+		// Write input variable declarations
+		writeInputs(collectedInputs);
+		
+		// Write output variable declarations
+		writeOutputs(collectedOutputs);
+		
 		// Write membership functions
 		for (Map.Entry<String, ArrayList<T1MF_Prototype>> entry : mappedFunctions.entrySet()) {
 			for (int x=0; x<entry.getValue().size(); x++) {
@@ -277,24 +310,53 @@ public class FMLParser {
 		closeUp();
 	}
 	
+	/**
+	 * Closes the file created in the constructor after all of the information has been stored.
+	 */
 	public static void closeUp() {
 		newFIS.println("\t}");
 		newFIS.println("}");
 		newFIS.close();
 	}
 
+	/**
+	 * Method aiding in retrieving results of an XPath expression for when the result is singular
+	 * 
+	 * @param expr the XPath expression to be evaluated
+	 * @param doc the Document object the expression is evaluated over
+	 * @return the resulting String
+	 * @throws XPathExpressionException
+	 */
 	private static String getSingleResult(XPathExpression expr, Document doc) throws XPathExpressionException {
 		Object result = expr.evaluate(doc);
 		String singleResult = result.toString();
 		return singleResult;
 	}
 	
+	/**
+	 * Method aiding in retrieving results of an XPath expression for when the result is a list
+	 * 
+	 * @param expr the XPath expression to be evaluated
+	 * @param doc the Document object the expression is evaluated over
+	 * @return the NodeList containing the results
+	 * @throws XPathExpressionException
+	 */
 	private static NodeList getMultipleResults(XPathExpression expr, Document doc) throws XPathExpressionException {
 		Object result = expr.evaluate(doc, XPathConstants.NODESET);
 		NodeList multipleResults = (NodeList) result;
 		return multipleResults;
 	}
 	
+	/**
+	 * Method for parsing over a certain pre-defined file to retrieve the XPath expressions to evaluate
+	 * 
+	 * @param mapping the XML file containing the expressions
+	 * @return the ArrayList containing the expressions
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws XPathExpressionException
+	 */
 	public static ArrayList<String> getExpressions(File mapping) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 		domFactory.setNamespaceAware(true); 
@@ -330,6 +392,13 @@ public class FMLParser {
 		return xpaths;
 	}
 	
+	/**
+	 * Copies entire certain folders to the specified location
+	 * 
+	 * @param source the folder to be copied
+	 * @param target the location to be copied to
+	 * @throws IOException
+	 */
 	private static void copyFolder(File source, File target) throws IOException {
 		if(source.isDirectory()){
 			 
@@ -367,6 +436,13 @@ public class FMLParser {
 	    }
 	}
 	
+	/**
+	 * A method for constructing the variable name from a String,
+	 * used for when the system needs to write variable names to a file without knowing the actual variable name.
+	 * 
+	 * @param name the name of the variable
+	 * @return the variable name 
+	 */
 	private static String getVariableName(String name) {
 		name = name.toLowerCase();
 		String[] words = name.split(" ");
@@ -380,6 +456,16 @@ public class FMLParser {
 		return newName;
 	}
 	
+	/**
+	 * This method sets up the file structure for exporting code
+	 * It copies the source folders to a specified location and writes the
+	 * variable declarations to file.
+	 * 
+	 * @param systemName the name of the system
+	 * @param inputs the list of input variables
+	 * @param outputs the list of output variables
+	 * @param rbNames the list of rulebase names
+	 */
 	public static void prepare(String systemName, ArrayList<Input> inputs, ArrayList<Output> outputs, String[] rbNames) {
 		try {
 			File directory = new File(systemName);
@@ -430,6 +516,11 @@ public class FMLParser {
 		newFIS.println();
 	}
 	
+	/**
+	 * This method writes input variable declarations to file
+	 * 
+	 * @param vars the list of input variables
+	 */
 	public static void writeInputs(ArrayList<Input> vars) {
 		for (int i=0; i<vars.size(); i++) {
 			newFIS.println("\t\t" + vars.get(i).getName() + " = new Input(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
@@ -438,6 +529,11 @@ public class FMLParser {
 		collectedInputs = vars;
 	}
 	
+	/**
+	 * This method writes output variable declarations to file
+	 * 
+	 * @param vars the list of output variables
+	 */
 	public static void writeOutputs(ArrayList<Output> vars) {
 		for (int i=0; i<vars.size(); i++) {
 			newFIS.println("\t\t" + vars.get(i).getName() + " = new Output(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
@@ -446,6 +542,12 @@ public class FMLParser {
 		collectedOutputs = vars;
 	}
 	
+	/**
+	 * This method writes membership function declarations to file
+	 * 
+	 * @param varName the name of the membership function
+	 * @param mf the membership function
+	 */
 	public static void writeMembershipFunction(String varName, T1MF_Prototype mf) {
 		String variableName = getVariableName(mf.getName()) + getVariableName(varName) + "MF";
 		String mfType = mf.getClass().getSimpleName();
@@ -484,21 +586,43 @@ public class FMLParser {
 		}
 	}
 	
+	/**
+	 * This method writes antecedent declarations to file.
+	 * 
+	 * @param antecedent the antecedent to be written
+	 */
 	public static void writeAntecedent(T1_Antecedent antecedent) {
 		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + antecedent.getInput().getName() + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
 		newFIS.println();
 	}
 
+	/**
+	 * This method writes consequent declarations to file.
+	 * 
+	 * @param consequent the consequent to be written
+	 */
 	public static void writeConsequent(T1_Consequent consequent) {
 		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + consequent.getOutput().getName() + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
 		newFIS.println();
 	}
 	
+	/**
+	 * This method writes rulebase declarations to file
+	 * 
+	 * @param name the name of the rulebase
+	 * @param size the size of the rulebase
+	 */
 	public static void writeRuleBase(String name, int size) {
 		newFIS.println("\t\t" + name + " = new T1_Rulebase(" + size +");");
 		newFIS.println();
 	}
 	
+	/**
+	 * This method writes rule declarations to file
+	 * 
+	 * @param rulebase the rulebase name the rule to be written belongs to
+	 * @param rule the rule object
+	 */
 	public static void writeRule(String rulebase, T1_Rule rule) {
 		String antecedentNames = "";
 		for (int i=0; i<rule.getAntecedents().length; i++) {
@@ -521,6 +645,11 @@ public class FMLParser {
 		newFIS.println();
 	}
 
+	/**
+	 * This method writes the getResult() method to file
+	 * 
+	 * @param rulebaseName the rulebase name the inputs are evaluated over.
+	 */
 	public static void writeResult(String rulebaseName) {
 		String inputString = "";
 		String[] setInputs = new String[collectedInputs.size()];
@@ -565,12 +694,18 @@ public class FMLParser {
 		newFIS.println();
 	}
 	
+	/**
+	 * Writes the main method of the system class
+	 * 
+	 * @param name the system(class) name
+	 */
 	public static void writeMain(String name) {
 		newFIS.println("\t\tpublic static void main(String[] args) {");
 		newFIS.println("\t\t\t new " + name + "();" );
 		newFIS.println("\t\t}");
 	}
-
+	
+	// The main method of the FMLParser, used for testing purposes
 	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
 		File exampleFML = new File("tipperNew.fml");
 		File mapping = new File("fmlMapping.xml");

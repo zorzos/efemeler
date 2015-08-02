@@ -57,10 +57,7 @@ import java.awt.event.MouseEvent;
 public class MainWindow {
 
 	public JFrame frmEfemeler;
-	private int inputCount;
-	private int outputCount;
-	private int functionCount;
-	private int ruleCount;
+	private int inputCount, outputCount, inputMF, outputMF;
 	private DefaultListModel inputListModel;
 	private DefaultListModel outputListModel;
 	private DefaultListModel functionListModel;
@@ -98,6 +95,7 @@ public class MainWindow {
 	private static PrintWriter newFIS;
 	
 	private static Map<String, ArrayList<T1_Rule>> ruleMap = new HashMap<String, ArrayList<T1_Rule>>();
+	private static Map<T1MF_Prototype, Object> functionMap = new HashMap<T1MF_Prototype, Object>();
 
 	/**
 	 * Launch the application.
@@ -121,7 +119,349 @@ public class MainWindow {
 	public MainWindow() {
 		initialize();
 	}
+
+	/**
+	 * Initialize the contents of the frame.
+	 */
+	private void initialize() {
+		frmEfemeler = new JFrame();
+		frmEfemeler.setTitle("Efemeler");
+		frmEfemeler.setBounds(100, 100, 600, 555);
+		frmEfemeler.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmEfemeler.getContentPane().setLayout(null);
+		inputVarsList.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent arg0) {
+				if (arg0.getClickCount() == 2) {
+					int index = inputVarsList.locationToIndex(arg0.getPoint());
+					//System.out.println(index);
+				}
+			}
+		});
+		
+		inputVarsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		inputVarsList.setBounds(10, 36, 106, 125);
+		frmEfemeler.getContentPane().add(inputVarsList);
+		inputListModel = new DefaultListModel();
+		
+		lblInputVariables.setBounds(10, 11, 116, 14);
+		frmEfemeler.getContentPane().add(lblInputVariables);
+		
+		separator.setBounds(10, 172, 116, 2);
+		frmEfemeler.getContentPane().add(separator);
+		
+		lblOutputVariables.setBounds(10, 185, 116, 14);
+		frmEfemeler.getContentPane().add(lblOutputVariables);
+		
+		outputVarsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		outputVarsList.setBounds(10, 210, 106, 125);
+		frmEfemeler.getContentPane().add(outputVarsList);
+		outputListModel = new DefaultListModel();
+		
+		// Adds an action listener to the "Add Variable" button, so that it calls the appropriate
+		// dialog for the user to fill the variable details. Depending on the variable type added,
+		// the application adds it to the appropriate ArrayList and updates the list boxes in the main window.
+		addVarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AddVariable insertDialog = new AddVariable();
+				insertDialog.setVisible(true);
+				
+				int vt = insertDialog.getVariableType();
+				if (vt == 1) {
+					//System.out.println(insertDialog.getInputVariable().getClass().getSimpleName());
+					inputVars.add(insertDialog.getInputVariable());
+					inputListModel.addElement(insertDialog.getInputVariable().getName());
+					inputVarsList.setModel(inputListModel);
+				} else if (vt == 2) {
+					//System.out.println(insertDialog.getOutputVariable().getClass().getSimpleName());
+					outputVars.add(insertDialog.getOutputVariable());
+					outputListModel.addElement(insertDialog.getOutputVariable().getName());
+					outputVarsList.setModel(outputListModel);
+				}
+				update();
+			}
+		});
+		addVarButton.setBounds(10, 346, 116, 23);
+		frmEfemeler.getContentPane().add(addVarButton);
+		
+		lblMembershipFunctions.setBounds(458, 11, 116, 14);
+		frmEfemeler.getContentPane().add(lblMembershipFunctions);
+		
+		mfList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		mfList.setBounds(458, 36, 106, 130);
+		frmEfemeler.getContentPane().add(mfList);
+		functionListModel = new DefaultListModel();
+		
+		// The following bit of code calls the dialog for adding a new membership function.
+		// Afterwards the function is added to the ArrayList containing all the membership functions.
+		// Lastly the list box in the main window is updated
+		btnAddMf.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				AddMembershipFunction mfDialog = new AddMembershipFunction(inputVars, outputVars);
+				mfDialog.setVisible(true);
+				
+				T1MF_Prototype function = mfDialog.getFunction();
+				functions.add(function);
+				functionMap.put(function, mfDialog.getVariable());
+				functionListModel.addElement(mfDialog.getFunction().getName());
+				mfList.setModel(functionListModel);
+				update();
+			}
+		});
+		btnAddMf.setBounds(468, 172, 89, 23);
+		frmEfemeler.getContentPane().add(btnAddMf);
+		
+		separator_3.setBounds(458, 210, 106, 2);
+		frmEfemeler.getContentPane().add(separator_3);
+		
+		lblRules.setBounds(458, 221, 89, 14);
+		frmEfemeler.getContentPane().add(lblRules);
+		
+		ruleBaseList.setBounds(458, 244, 106, 125);
+		frmEfemeler.getContentPane().add(ruleBaseList);
+		rulebaseListModel = new DefaultListModel();
+		
+		// The next bit calls the dialog for adding a new rule for the user to interact with.
+		// Then it adds it to the ArrayList containing all the rules
+		btnAddRule.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				AddRule ruleDialog = new AddRule(inputVars, outputVars);
+				ruleDialog.setVisible(true);
+				
+				T1_Rule rule = ruleDialog.getRule();
+				rules.add(rule);
+			}
+		});
+		
+		btnAddRule.setBounds(468, 380, 89, 23);
+		frmEfemeler.getContentPane().add(btnAddRule);
+		
+		frmEfemeler.setJMenuBar(menuBar);
+		
+		menuBar.add(mnOptions);
+		mntmExportCode.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				ExportCode exportCodeDialog = new ExportCode();
+				exportCodeDialog.setVisible(true);
+				
+				String systemName = exportCodeDialog.getSystemName();
+				String[] rbNames = new String[2];
+				try {
+					newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
+					
+					prepare(systemName, inputVars, outputVars, rbNames);
+					writeInputs(inputVars);
+					writeOutputs(outputVars);
+					for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+						if (entry.getValue().getClass().getSimpleName().toString().equals("Input")) {
+							Input in = (Input)entry.getValue();
+							writeMembershipFunction(in.getName(), entry.getKey());
+						} else {
+							Output out = (Output)entry.getValue();
+							writeMembershipFunction(out.getName(), entry.getKey());
+						}
+					}
+					
+					writeMain(systemName);
+					closeUp();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		mnOptions.add(mntmExportCode);		
+		mnOptions.add(mntmExportEclipseProject);
+		mnOptions.add(separator_1);
+		
+		// This bit calls the function that builds a Fuzzy inference system from a Fuzzy Markup Language file
+		mnOptions.add(mntmSystemFromFml);
+		mntmSystemFromFml.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					buildFromFML();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				} catch (XPathExpressionException e2) {
+					e2.printStackTrace();
+				} catch (ParserConfigurationException e3) {
+					e3.printStackTrace();
+				} catch (SAXException e4) {
+					e4.printStackTrace();
+				}
+			}
+		});
+		
+		mnOptions.add(separator_2);
+		
+		mnOptions.add(mntmClose);
+		mntmClose.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				frmEfemeler.dispose();
+			}
+		});
+		
+		update();
+	}
 	
+	/**
+	 * Builds a Fuzzy Inference System from a Fuzzy Markup Language file provided by the user via
+	 * a file selector dialog box using the code in FMLParser.java
+	 * 
+	 * @throws IOException
+	 * @throws XPathExpressionException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 */
+	private void buildFromFML() throws IOException, XPathExpressionException, ParserConfigurationException, SAXException {
+		JFileChooser browser = new JFileChooser();
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("Fuzzy Markup Language file", "fml");
+		browser.setFileFilter(filter);
+		int returnValue = browser.showOpenDialog(frmEfemeler);
+		if (returnValue == JFileChooser.APPROVE_OPTION) {
+			String filename = browser.getSelectedFile().getPath();
+			int slashIndex = filename.lastIndexOf("\\");
+			int dotIndex = filename.lastIndexOf(".");
+			filename = filename.substring(slashIndex+1, dotIndex);
+			FMLParser parser = new FMLParser(browser.getSelectedFile());
+			// parse FML file and build system from there - code should be in FMLParser.java
+			xpaths = parser.getExpressions(mapping);
+			parser.parseFile(browser.getSelectedFile(), xpaths);
+			parser.closeUp();
+		}
+	}
+	
+	// This method serves to update the state of the system.
+	// It counts the number of input, output variables as well as the
+	// number of rules. The logic behind this is that no membership functions can be added 
+	// without any variables and that no rules can be added without at least one
+	// input and one output membership function.
+	private void update() {
+		inputCount = inputVars.size();
+		outputCount = outputVars.size();
+//		System.out.println("inputCount: " + inputCount);
+//		System.out.println("outputCount: " + outputCount);
+		inputMF = 0; 
+		outputMF = 0;
+
+		if (functionMap.size() > 0) {
+			for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+				if (entry.getValue().getClass().getSimpleName().toString().equals("Input")) {
+					inputMF++;
+				} else {
+					outputMF++;
+				}
+			}
+		}
+		
+		//System.out.println("inputMF "+inputMF);
+		//System.out.println("outputMF "+outputMF);
+		
+		if (inputCount <  1 || outputCount < 1) {
+			mntmExportCode.setEnabled(false);
+			mntmExportEclipseProject.setEnabled(false);
+			btnAddMf.setEnabled(false);
+			btnAddRule.setEnabled(false);
+		} 
+		
+		if (inputCount >  0 || outputCount > 0) {
+			btnAddMf.setEnabled(true);
+		}
+		
+		if (inputMF >  0 && outputMF > 0) {
+			btnAddRule.setEnabled(true);
+		}
+		
+		if (ruleMap.size() > 0 ) {
+			mntmExportCode.setEnabled(true);
+			mntmExportEclipseProject.setEnabled(true);
+		}
+	}
+	
+	/**
+	 * Copies entire certain folders to the specified location
+	 * 
+	 * @param source the folder to be copied
+	 * @param target the location to be copied to
+	 * @throws IOException
+	 */
+	private static void copyFolder(File source, File target) throws IOException {
+		if(source.isDirectory()){
+			 
+    		//if directory does not exist, create it
+    		if(!target.exists()){
+    			target.mkdir();
+ 
+    			//list all the directory contents
+    			String files[] = source.list();
+ 
+	    		for (String file : files) {
+	    		   //construct the src and dest file structure
+	    		   File srcFile = new File(source, file);
+	    		   File destFile = new File(target, file);
+	    		   //recursive copy
+	    		   copyFolder(srcFile,destFile);
+	    		}
+    		}
+    	} else {
+    		//if file, then copy it
+    		//Use bytes stream to support all file types
+	    		InputStream in = new FileInputStream(source);
+    	        OutputStream out = new FileOutputStream(target); 
+ 
+    	        byte[] buffer = new byte[1024];
+ 
+    	        int length;
+    	        //copy the file content in bytes 
+    	        while ((length = in.read(buffer)) > 0){
+    	    	   out.write(buffer, 0, length);
+    	        }
+ 
+    	        in.close();
+    	        out.close();
+	    }
+	}
+	
+	/**
+	 * A method for constructing the variable name from a String,
+	 * used for when the system needs to write variable names to a file without knowing the actual variable name.
+	 * 
+	 * @param name the name of the variable
+	 * @return the variable name 
+	 */
+	private static String getVariableName(String name) {
+		name = name.toLowerCase();
+		String[] words = name.split(" ");
+		for (int i=1; i<words.length; i++) {
+			words[i] = words[i].replace(words[i].substring(0, 1), words[i].substring(0, 1).toUpperCase());
+		}
+		String newName = "";
+		for (int j=0; j<words.length; j++) {
+			newName = newName + words[j];
+		}
+		return newName;
+	}
+	
+	/**
+	 * Closes the file created in the constructor after all of the information has been stored.
+	 */
+	public static void closeUp() {
+		newFIS.println("\t}");
+		newFIS.println("}");
+		newFIS.close();
+	}
+	
+	/**
+	 * This method sets up the file structure for exporting code
+	 * It copies the source folders to a specified location and writes the
+	 * variable declarations to file.
+	 * 
+	 * @param systemName the name of the system
+	 * @param inputs the list of input variables
+	 * @param outputs the list of output variables
+	 * @param rbNames the list of rulebase names
+	 */
 	public static void prepare(String systemName, ArrayList<Input> inputs, ArrayList<Output> outputs, String[] rbNames) {
 		try {
 			File directory = new File(systemName);
@@ -172,56 +512,11 @@ public class MainWindow {
 		newFIS.println();
 	}
 	
-	private static void copyFolder(File source, File target) throws IOException {
-		if(source.isDirectory()){
-			 
-    		//if directory does not exist, create it
-    		if(!target.exists()){
-    			target.mkdir();
- 
-    			//list all the directory contents
-    			String files[] = source.list();
- 
-	    		for (String file : files) {
-	    		   //construct the src and dest file structure
-	    		   File srcFile = new File(source, file);
-	    		   File destFile = new File(target, file);
-	    		   //recursive copy
-	    		   copyFolder(srcFile,destFile);
-	    		}
-    		}
-    	} else {
-    		//if file, then copy it
-    		//Use bytes stream to support all file types
-	    		InputStream in = new FileInputStream(source);
-    	        OutputStream out = new FileOutputStream(target); 
- 
-    	        byte[] buffer = new byte[1024];
- 
-    	        int length;
-    	        //copy the file content in bytes 
-    	        while ((length = in.read(buffer)) > 0){
-    	    	   out.write(buffer, 0, length);
-    	        }
- 
-    	        in.close();
-    	        out.close();
-	    }
-	}
-	
-	private static String getVariableName(String name) {
-		name = name.toLowerCase();
-		String[] words = name.split(" ");
-		for (int i=1; i<words.length; i++) {
-			words[i] = words[i].replace(words[i].substring(0, 1), words[i].substring(0, 1).toUpperCase());
-		}
-		String newName = "";
-		for (int j=0; j<words.length; j++) {
-			newName = newName + words[j];
-		}
-		return newName;
-	}
-	
+	/**
+	 * This method writes input variable declarations to file
+	 * 
+	 * @param vars the list of input variables
+	 */
 	public static void writeInputs(ArrayList<Input> vars) {
 		for (int i=0; i<vars.size(); i++) {
 			newFIS.println("\t\t" + vars.get(i).getName() + " = new Input(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
@@ -230,6 +525,11 @@ public class MainWindow {
 		inputVars = vars;
 	}
 	
+	/**
+	 * This method writes output variable declarations to file
+	 * 
+	 * @param vars the list of output variables
+	 */
 	public static void writeOutputs(ArrayList<Output> vars) {
 		for (int i=0; i<vars.size(); i++) {
 			newFIS.println("\t\t" + vars.get(i).getName() + " = new Output(\""+vars.get(i).getName()+"\", new Tuple("+ vars.get(i).getDomain().getLeft() + ", " + vars.get(i).getDomain().getRight() + "));");
@@ -238,8 +538,14 @@ public class MainWindow {
 		outputVars = vars;
 	}
 	
-	public static void writeMembershipFunction(T1MF_Prototype mf) {
-		String variableName = getVariableName(mf.getName()) + "MF";
+	/**
+	 * This method writes membership function declarations to file
+	 * 
+	 * @param varName the name of the membership function
+	 * @param mf the membership function
+	 */
+	public static void writeMembershipFunction(String varName, T1MF_Prototype mf) {
+		String variableName = getVariableName(mf.getName()) + getVariableName(varName) + "MF";
 		String mfType = mf.getClass().getSimpleName();
 		switch (mfType) {
 			case "T1MF_Singleton":
@@ -276,21 +582,43 @@ public class MainWindow {
 		}
 	}
 	
+	/**
+	 * This method writes antecedent declarations to file.
+	 * 
+	 * @param antecedent the antecedent to be written
+	 */
 	public static void writeAntecedent(T1_Antecedent antecedent) {
-		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
+		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + antecedent.getInput().getName() + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
 		newFIS.println();
 	}
 
+	/**
+	 * This method writes consequent declarations to file.
+	 * 
+	 * @param consequent the consequent to be written
+	 */
 	public static void writeConsequent(T1_Consequent consequent) {
-		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
+		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + consequent.getOutput().getName() + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
 		newFIS.println();
 	}
 	
+	/**
+	 * This method writes rulebase declarations to file
+	 * 
+	 * @param name the name of the rulebase
+	 * @param size the size of the rulebase
+	 */
 	public static void writeRuleBase(String name, int size) {
 		newFIS.println("\t\t" + name + " = new T1_Rulebase(" + size +");");
 		newFIS.println();
 	}
 	
+	/**
+	 * This method writes rule declarations to file
+	 * 
+	 * @param rulebase the rulebase name the rule to be written belongs to
+	 * @param rule the rule object
+	 */
 	public static void writeRule(String rulebase, T1_Rule rule) {
 		String antecedentNames = "";
 		for (int i=0; i<rule.getAntecedents().length; i++) {
@@ -313,6 +641,11 @@ public class MainWindow {
 		newFIS.println();
 	}
 
+	/**
+	 * This method writes the getResult() method to file
+	 * 
+	 * @param rulebaseName the rulebase name the inputs are evaluated over.
+	 */
 	public static void writeResult(String rulebaseName) {
 		String inputString = "";
 		String[] setInputs = new String[inputVars.size()];
@@ -357,213 +690,14 @@ public class MainWindow {
 		newFIS.println();
 	}
 	
+	/**
+	 * Writes the main method of the system class
+	 * 
+	 * @param name the system(class) name
+	 */
 	public static void writeMain(String name) {
 		newFIS.println("\t\tpublic static void main(String[] args) {");
 		newFIS.println("\t\t\t new " + name + "();" );
 		newFIS.println("\t\t}");
-	}
-
-	/**
-	 * Initialize the contents of the frame.
-	 */
-	private void initialize() {
-		frmEfemeler = new JFrame();
-		frmEfemeler.setTitle("Efemeler");
-		frmEfemeler.setBounds(100, 100, 600, 555);
-		frmEfemeler.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		frmEfemeler.getContentPane().setLayout(null);
-		inputVarsList.addMouseListener(new MouseAdapter() {
-			public void mouseClicked(MouseEvent arg0) {
-				if (arg0.getClickCount() == 2) {
-					int index = inputVarsList.locationToIndex(arg0.getPoint());
-					System.out.println(index);
-				}
-			}
-		});
-		
-		inputVarsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		inputVarsList.setBounds(10, 36, 106, 125);
-		frmEfemeler.getContentPane().add(inputVarsList);
-		inputListModel = new DefaultListModel();
-		
-		lblInputVariables.setBounds(10, 11, 116, 14);
-		frmEfemeler.getContentPane().add(lblInputVariables);
-		
-		separator.setBounds(10, 172, 116, 2);
-		frmEfemeler.getContentPane().add(separator);
-		
-		lblOutputVariables.setBounds(10, 185, 116, 14);
-		frmEfemeler.getContentPane().add(lblOutputVariables);
-		
-		outputVarsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		outputVarsList.setBounds(10, 210, 106, 125);
-		frmEfemeler.getContentPane().add(outputVarsList);
-		outputListModel = new DefaultListModel();
-		
-		addVarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AddVariable insertDialog = new AddVariable();
-				insertDialog.setVisible(true);
-				
-				int vt = insertDialog.getVariableType();
-				if (vt == 1) {
-					//System.out.println(insertDialog.getInputVariable().getClass().getSimpleName());
-					inputVars.add(insertDialog.getInputVariable());
-					inputListModel.addElement(insertDialog.getInputVariable().getName());
-					inputVarsList.setModel(inputListModel);
-				} else if (vt == 2) {
-					//System.out.println(insertDialog.getOutputVariable().getClass().getSimpleName());
-					outputVars.add(insertDialog.getOutputVariable());
-					outputListModel.addElement(insertDialog.getOutputVariable().getName());
-					outputVarsList.setModel(outputListModel);
-				}
-				update();
-			}
-		});
-		addVarButton.setBounds(10, 346, 116, 23);
-		frmEfemeler.getContentPane().add(addVarButton);
-		
-		lblMembershipFunctions.setBounds(458, 11, 116, 14);
-		frmEfemeler.getContentPane().add(lblMembershipFunctions);
-		
-		mfList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		mfList.setBounds(458, 36, 106, 130);
-		frmEfemeler.getContentPane().add(mfList);
-		
-		functionListModel = new DefaultListModel();
-		btnAddMf.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				AddMembershipFunction mfDialog = new AddMembershipFunction(inputVars, outputVars);
-				mfDialog.setVisible(true);
-				
-				T1MF_Prototype function = mfDialog.getFunction();
-				functions.add(function);
-				functionListModel.addElement(mfDialog.getFunction().getName());
-				mfList.setModel(functionListModel);
-				update();
-			}
-		});
-		btnAddMf.setBounds(468, 172, 89, 23);
-		frmEfemeler.getContentPane().add(btnAddMf);
-		
-		separator_3.setBounds(458, 210, 106, 2);
-		frmEfemeler.getContentPane().add(separator_3);
-		
-		lblRules.setBounds(458, 221, 89, 14);
-		frmEfemeler.getContentPane().add(lblRules);
-		
-		ruleBaseList.setBounds(458, 244, 106, 125);
-		frmEfemeler.getContentPane().add(ruleBaseList);
-		
-		rulebaseListModel = new DefaultListModel();
-		btnAddRule.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				AddRule ruleDialog = new AddRule(inputVars, outputVars);
-				ruleDialog.setVisible(true);
-				
-				T1_Rule rule = ruleDialog.getRule();
-				rules.add(rule);
-			}
-		});
-		
-		btnAddRule.setBounds(468, 380, 89, 23);
-		frmEfemeler.getContentPane().add(btnAddRule);
-		
-		frmEfemeler.setJMenuBar(menuBar);
-		
-		menuBar.add(mnOptions);
-		mntmExportCode.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				ExportCode exportCodeDialog = new ExportCode();
-				exportCodeDialog.setVisible(true);
-				
-				String systemName = exportCodeDialog.getSystemName();	
-				try {
-					newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
-				} catch (FileNotFoundException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (UnsupportedEncodingException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		mnOptions.add(mntmExportCode);
-		
-		mnOptions.add(mntmExportEclipseProject);
-		
-		mnOptions.add(separator_1);
-		
-		mnOptions.add(mntmSystemFromFml);
-		mntmSystemFromFml.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					buildFromFML();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (XPathExpressionException e2) {
-					e2.printStackTrace();
-				} catch (ParserConfigurationException e3) {
-					e3.printStackTrace();
-				} catch (SAXException e4) {
-					e4.printStackTrace();
-				}
-			}
-		});
-		
-		mnOptions.add(separator_2);
-		
-		mnOptions.add(mntmClose);
-		mntmClose.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				frmEfemeler.dispose();
-			}
-		});
-		
-		update();
-	}
-	
-	private void buildFromFML() throws IOException, XPathExpressionException, ParserConfigurationException, SAXException {
-		JFileChooser browser = new JFileChooser();
-		FileNameExtensionFilter filter = new FileNameExtensionFilter("Fuzzy Markup Language file", "fml");
-		browser.setFileFilter(filter);
-		int returnValue = browser.showOpenDialog(frmEfemeler);
-		if (returnValue == JFileChooser.APPROVE_OPTION) {
-			String filename = browser.getSelectedFile().getPath();
-			int slashIndex = filename.lastIndexOf("\\");
-			int dotIndex = filename.lastIndexOf(".");
-			filename = filename.substring(slashIndex+1, dotIndex);
-			FMLParser parser = new FMLParser(browser.getSelectedFile());
-			// parse FML file and build system from there - code should be in FMLParser.java
-			xpaths = parser.getExpressions(mapping);
-			parser.parseFile(browser.getSelectedFile(), xpaths);
-			parser.closeUp();
-		}
-	}
-	
-	private void update() {
-		inputCount = inputListModel.getSize();
-		outputCount = outputListModel.getSize();
-		functionCount = functions.size();
-//		System.out.println("inputCount: " + inputCount);
-//		System.out.println("outputCount: " + outputCount);
-		
-		if (inputCount <  1 || outputCount < 1) {
-			//mntmExportCode.setEnabled(false);
-			mntmExportEclipseProject.setEnabled(false);
-			btnAddMf.setEnabled(false);
-			btnAddRule.setEnabled(false);
-		} 
-		
-		if (inputCount >  0 || outputCount > 0) {
-			btnAddMf.setEnabled(true);
-		}
-		
-		if (inputCount >  0 && outputCount > 0) {
-			btnAddRule.setEnabled(true);
-		}
 	}
 }
