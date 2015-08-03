@@ -10,6 +10,7 @@ import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -224,7 +225,7 @@ public class MainWindow {
 		// Then it adds it to the ArrayList containing all the rules
 		btnAddRule.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				AddRule ruleDialog = new AddRule(inputVars, outputVars);
+				AddRule ruleDialog = new AddRule(inputVars, outputVars, functionMap);
 				ruleDialog.setVisible(true);
 				
 				T1_Rule rule = ruleDialog.getRule();
@@ -320,15 +321,21 @@ public class MainWindow {
 		browser.setFileFilter(filter);
 		int returnValue = browser.showOpenDialog(frmEfemeler);
 		if (returnValue == JFileChooser.APPROVE_OPTION) {
-			String filename = browser.getSelectedFile().getPath();
-			int slashIndex = filename.lastIndexOf("\\");
-			int dotIndex = filename.lastIndexOf(".");
-			filename = filename.substring(slashIndex+1, dotIndex);
-			FMLParser parser = new FMLParser(browser.getSelectedFile());
-			// parse FML file and build system from there - code should be in FMLParser.java
-			xpaths = parser.getExpressions(mapping);
-			parser.parseFile(browser.getSelectedFile(), xpaths);
-			parser.closeUp();
+			try {	
+				String filename = browser.getSelectedFile().getPath();
+				int slashIndex = filename.lastIndexOf("\\");
+				int dotIndex = filename.lastIndexOf(".");
+				filename = filename.substring(slashIndex+1, dotIndex);
+				FMLParser parser = new FMLParser(browser.getSelectedFile());
+				// parse FML file and build system from there - code should be in FMLParser.java
+				xpaths = parser.getExpressions(mapping);
+				parser.parseFile(browser.getSelectedFile(), xpaths);
+				parser.closeUp();
+			} catch (Exception e) {
+				JOptionPane.showMessageDialog(frmEfemeler, e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
+				e.printStackTrace();
+			}
+			//JOptionPane.showMessageDialog(frmEfemeler, "System built. Please check " + System.getProperty("user.dir") + File.separator + browser.getSelectedFile().getName());
 		}
 	}
 	
@@ -340,11 +347,10 @@ public class MainWindow {
 	private void update() {
 		inputCount = inputVars.size();
 		outputCount = outputVars.size();
-//		System.out.println("inputCount: " + inputCount);
-//		System.out.println("outputCount: " + outputCount);
 		inputMF = 0; 
 		outputMF = 0;
 
+		// Count input and output variable membership functions 
 		if (functionMap.size() > 0) {
 			for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
 				if (entry.getValue().getClass().getSimpleName().toString().equals("Input")) {
@@ -355,9 +361,7 @@ public class MainWindow {
 			}
 		}
 		
-		//System.out.println("inputMF "+inputMF);
-		//System.out.println("outputMF "+outputMF);
-		
+		// If no variables present, disable all options
 		if (inputCount <  1 || outputCount < 1) {
 			mntmExportCode.setEnabled(false);
 			mntmExportEclipseProject.setEnabled(false);
@@ -365,14 +369,18 @@ public class MainWindow {
 			btnAddRule.setEnabled(false);
 		} 
 		
+		// If variables are present, enable adding membership functions
 		if (inputCount >  0 || outputCount > 0) {
 			btnAddMf.setEnabled(true);
 		}
 		
+		// If at least one input and one output variable membership function present,
+		// enable adding rules
 		if (inputMF >  0 && outputMF > 0) {
 			btnAddRule.setEnabled(true);
 		}
 		
+		// If rules are present enable exporting options
 		if (ruleMap.size() > 0 ) {
 			mntmExportCode.setEnabled(true);
 			mntmExportEclipseProject.setEnabled(true);

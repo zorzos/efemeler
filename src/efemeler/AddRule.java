@@ -19,10 +19,12 @@ import javax.swing.JLabel;
 import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JComboBox;
 import javax.swing.JTextField;
 
+import type1.sets.T1MF_Prototype;
 import type1.system.T1_Rule;
 
 public class AddRule extends JDialog {
@@ -34,6 +36,7 @@ public class AddRule extends JDialog {
 	private JTextField textField;
 	private static ArrayList<Input> in;
 	private static ArrayList<Output> out;
+	private static Map<T1MF_Prototype, Object> functions;
 	private T1_Rule rule;
 
 	/**
@@ -41,7 +44,7 @@ public class AddRule extends JDialog {
 	 */
 	public static void main(String[] args) {
 		try {
-			AddRule dialog = new AddRule(in, out);
+			AddRule dialog = new AddRule(in, out, functions);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
@@ -56,7 +59,10 @@ public class AddRule extends JDialog {
 	/**
 	 * Create the dialog.
 	 */
-	public AddRule(ArrayList<Input> inputs, ArrayList<Output> outputs) {
+	public AddRule(ArrayList<Input> inputs, ArrayList<Output> outputs, final Map<T1MF_Prototype, Object> functionMap) {
+		System.out.println("functionMap with size: " + functionMap.size());
+		System.out.println(functionMap.keySet());
+		System.out.println(functionMap.values());
 		setTitle("Add Rule");
 		setModal(true);
 		setBounds(100, 100, 450, 304);
@@ -79,14 +85,9 @@ public class AddRule extends JDialog {
 		lblIs.setBounds(125, 106, 44, 14);
 		contentPanel.add(lblIs);
 		
-		JComboBox inputMFBox = new JComboBox();
+		final JComboBox inputMFBox = new JComboBox();
 		inputMFBox.setBounds(145, 103, 99, 20);
 		contentPanel.add(inputMFBox);
-		
-		inputComboBox.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-			}
-		});
 		
 		JButton btnAddMoreVariables = new JButton("Add more variables");
 		btnAddMoreVariables.addActionListener(new ActionListener() {
@@ -109,20 +110,54 @@ public class AddRule extends JDialog {
 		
 		int inputCount = inputs.size();
 		for (int i=0; i<inputs.size(); i++) {
-			inputComboBox.addItem(inputs.get(i).getName());
+			inputComboBox.addItem(inputs.get(i).getName() + " (Input)");
 		}
 		
 		for (int j=0; j<outputs.size(); j++) {
-			outputComboBox.addItem(outputs.get(j).getName());;
+			outputComboBox.addItem(outputs.get(j).getName() + " (Output)");;
 		}
 		
 		JLabel lblIs_1 = new JLabel("is");
 		lblIs_1.setBounds(125, 184, 44, 14);
 		contentPanel.add(lblIs_1);
 		
-		JComboBox outputMFBox = new JComboBox();
+		final JComboBox outputMFBox = new JComboBox();
 		outputMFBox.setBounds(145, 181, 99, 20);
 		contentPanel.add(outputMFBox);
+		
+		inputComboBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				inputMFBox.removeAllItems();
+				JComboBox inVar = (JComboBox)arg0.getSource();
+				String varName = (String)inVar.getSelectedItem();
+				int spaceIndex = varName.indexOf(" ");
+				for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+					if (entry.getValue().getClass().getSimpleName().equals("Input")) {
+						Input ruleIn = (Input)entry.getValue();
+						if (varName.substring(0, spaceIndex).equals(ruleIn.getName().toString())) {
+							inputMFBox.addItem(entry.getKey().getName());
+						}
+					}
+				}
+			}
+		});
+		
+		outputComboBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				outputMFBox.removeAllItems();
+				JComboBox outVar = (JComboBox)arg0.getSource();
+				String varName = (String)outVar.getSelectedItem();
+				int spaceIndex = varName.indexOf(" ");
+				for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+					if (entry.getValue().getClass().getSimpleName().equals("Output")) {
+						Output ruleOut = (Output)entry.getValue();
+						if (varName.substring(0, spaceIndex).equals(ruleOut.getName().toString())) {
+							outputMFBox.addItem(entry.getKey().getName());
+						}
+					}
+				}
+			}
+		});
 		
 		JLabel lblName = new JLabel("Name");
 		lblName.setBounds(10, 14, 46, 14);

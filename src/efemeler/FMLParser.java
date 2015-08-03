@@ -97,8 +97,9 @@ public class FMLParser {
 	 * @throws SAXException
 	 * @throws IOException
 	 * @throws XPathExpressionException
+	 * @throws InvalidFMLException 
 	 */
-	public static void parseFile(File file, ArrayList<String> paths) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+	public static void parseFile(File file, ArrayList<String> paths) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException, InvalidFMLException {
 		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 		domFactory.setNamespaceAware(true); 
 		DocumentBuilder builder = domFactory.newDocumentBuilder();
@@ -263,7 +264,11 @@ public class FMLParser {
 		}
 		
 		// Prepare file - writing variables
-		prepare(fuzzyControllerName, collectedInputs, collectedOutputs, rulebaseNames);
+		if (!fuzzyControllerName.equals("") && collectedInputs.size() > 0 && collectedOutputs.size() > 0 && rulebaseNames.length > 0) {
+			prepare(fuzzyControllerName, collectedInputs, collectedOutputs, rulebaseNames);
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
+		}
 		
 		// Write input variable declarations
 		writeInputs(collectedInputs);
@@ -272,40 +277,68 @@ public class FMLParser {
 		writeOutputs(collectedOutputs);
 		
 		// Write membership functions
-		for (Map.Entry<String, ArrayList<T1MF_Prototype>> entry : mappedFunctions.entrySet()) {
-			for (int x=0; x<entry.getValue().size(); x++) {
-				writeMembershipFunction(entry.getKey(), entry.getValue().get(x));
+		if (mappedFunctions.size() > 0) {
+			for (Map.Entry<String, ArrayList<T1MF_Prototype>> entry : mappedFunctions.entrySet()) {
+				for (int x=0; x<entry.getValue().size(); x++) {
+					writeMembershipFunction(entry.getKey(), entry.getValue().get(x));
+				}
 			}
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
 		}
 		
 		// Write antecedents
-		for (int y=0; y<newAnts.length; y++) {
-			writeAntecedent(newAnts[y]);
+		if (newAnts.length > 0) {
+			for (int y=0; y<newAnts.length; y++) {
+				writeAntecedent(newAnts[y]);
+			}
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
 		}
 		
 		// Write consequents
-		for (int z=0; z<newCons.length; z++) {
-			writeConsequent(newCons[z]);
+		if (newCons.length > 0) {
+			for (int z=0; z<newCons.length; z++) {
+				writeConsequent(newCons[z]);
+			}
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
 		}
 		
 		// Write rulebases
-		for (int h=0; h<rulebaseNames.length; h++) {
-			writeRuleBase(rulebaseNames[h], rulebaseSizes[h]);
+		if (rulebaseNames.length > 0) {
+			for (int h=0; h<rulebaseNames.length; h++) {
+				writeRuleBase(rulebaseNames[h], rulebaseSizes[h]);
+			}
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
 		}
 		
 		// Write rules
-		for (Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
-		 	for (int f=0; f<entry.getValue().size(); f++) {
-		 		writeRule(entry.getKey(), entry.getValue().get(f));
-			}
-		 }
-		
-		// Write result method
-		for (int b=0; b<rulebaseNames.length; b++) {
-			writeResult(rulebaseNames[b]);
+		if (ruleMap.size() > 0) {
+			for (Map.Entry<String, ArrayList<T1_Rule>> entry : ruleMap.entrySet()) {
+			 	for (int f=0; f<entry.getValue().size(); f++) {
+			 		writeRule(entry.getKey(), entry.getValue().get(f));
+				}
+			 }
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
 		}
 		
-		writeMain(fuzzyControllerName);
+		// Write result method
+		if (rulebaseNames.length > 0 ) {
+			for (int b=0; b<rulebaseNames.length; b++) {
+				writeResult(rulebaseNames[b]);
+			}
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
+		}
+		
+		if (!fuzzyControllerName.equals("")) {
+			writeMain(fuzzyControllerName);
+		} else {
+			throw new InvalidFMLException("The Fuzzy Markup Language file provided is invalid. Please select again.");
+		}
 		
 		closeUp();
 	}
@@ -706,7 +739,7 @@ public class FMLParser {
 	}
 	
 	// The main method of the FMLParser, used for testing purposes
-	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+	public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException, InvalidFMLException {
 		File exampleFML = new File("tipperNew.fml");
 		File mapping = new File("fmlMapping.xml");
 
