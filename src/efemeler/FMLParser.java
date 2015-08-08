@@ -660,9 +660,9 @@ public class FMLParser {
 		String antecedentNames = "";
 		for (int i=0; i<rule.getAntecedents().length; i++) {
 			if (i==0) {
-				antecedentNames += getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+				antecedentNames += getVariableName(rule.getAntecedents()[i].getName());
 			} else {
-				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName());
 			}
 		}
 		

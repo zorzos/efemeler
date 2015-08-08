@@ -70,7 +70,7 @@ public class MainWindow {
 	JLabel lblOutputVariables = new JLabel("Output Variables");
 	JList outputVarsList = new JList();
 	JButton addVarButton = new JButton("Add variable");
-	JLabel lblMembershipFunctions = new JLabel("Membership Functions");
+	JLabel lblMembershipFunctions = new JLabel("Membership");
 	JList mfList = new JList();
 	JButton btnAddMf = new JButton("Add MF");
 	JSeparator separator_3 = new JSeparator();
@@ -82,7 +82,7 @@ public class MainWindow {
 	JMenuItem mntmExportCode = new JMenuItem("Export code");
 	JMenuItem mntmExportEclipseProject = new JMenuItem("Export Eclipse project");
 	JSeparator separator_1 = new JSeparator();
-	JMenuItem mntmSystemFromFml = new JMenuItem("System from FML");
+	JMenuItem mntmSystemFromFml = new JMenuItem("Build system from FML file");
 	JSeparator separator_2 = new JSeparator();
 	JMenuItem mntmClose = new JMenuItem("Close");
 	
@@ -97,6 +97,9 @@ public class MainWindow {
 	
 	private static Map<String, ArrayList<T1_Rule>> ruleMap = new HashMap<String, ArrayList<T1_Rule>>();
 	private static Map<T1MF_Prototype, Object> functionMap = new HashMap<T1MF_Prototype, Object>();
+	
+	private ArrayList<String> varNames = new ArrayList<String>();
+	private ArrayList<String> mfNames = new ArrayList<String>();
 
 	/**
 	 * Launch the application.
@@ -134,7 +137,51 @@ public class MainWindow {
 			public void mouseClicked(MouseEvent arg0) {
 				if (arg0.getClickCount() == 2) {
 					int index = inputVarsList.locationToIndex(arg0.getPoint());
+					
+					Input selectedVar = null;
+					for (int i=0; i<inputVars.size(); i++) {
+						if (inputVars.get(i).getName().equals(inputVarsList.getSelectedValue().toString())) {
+							selectedVar = inputVars.get(i);
+						}
+					}
+
+					AddVariable insertDialog = new AddVariable(varNames);
+					insertDialog.setInput(selectedVar);
+					insertDialog.setVisible(true);
 					//System.out.println(index);
+					
+					
+					if (insertDialog.getButton().equals("OK")) {
+						varNames.remove(selectedVar.getName());
+						inputListModel.removeElement(selectedVar.getName());
+						
+						for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+							if (entry.getValue().getClass().getSimpleName().equals("Input")) {
+								Input comboIn = (Input)entry.getValue();
+								if (selectedVar.getName().equals(comboIn.getName())) {
+									entry.setValue(insertDialog.getInputVariable());
+								}
+							}
+						}
+						
+						for (int j=0; j<rules.size(); j++) {
+							T1_Antecedent[] ants = rules.get(j).getAntecedents();
+							
+							for (int a=0; a<ants.length; a++) {
+								Input varIn = ants[a].getInput();
+								if (selectedVar.getName().equals(varIn.getName())) {
+									ants[a] = new T1_Antecedent("some antecedent", ants[a].getMF(), insertDialog.getInputVariable());
+								}
+							}
+						}
+						
+						inputVars.add(insertDialog.getInputVariable());
+						inputListModel.addElement(insertDialog.getInputVariable().getName());
+						varNames.add(insertDialog.getInputVariable().getName());
+						inputVarsList.setModel(inputListModel);
+						inputVars.remove(selectedVar);
+						update();
+					}
 				}
 			}
 		});
@@ -152,6 +199,58 @@ public class MainWindow {
 		
 		lblOutputVariables.setBounds(10, 185, 116, 14);
 		frmEfemeler.getContentPane().add(lblOutputVariables);
+		outputVarsList.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent arg0) {
+				if (arg0.getClickCount() == 2) {
+					int index = outputVarsList.locationToIndex(arg0.getPoint());
+					
+					Output selectedVar = null;
+					for (int i=0; i<outputVars.size(); i++) {
+						if (outputVars.get(i).getName().equals(outputVarsList.getSelectedValue().toString())) {
+							selectedVar = outputVars.get(i);
+						}
+					}
+
+					AddVariable insertDialog = new AddVariable(varNames);
+					insertDialog.setOutput(selectedVar);
+					insertDialog.setVisible(true);
+					//System.out.println(index);
+					
+					
+					if (insertDialog.getButton().equals("OK")) {
+						varNames.remove(selectedVar.getName());
+						outputListModel.removeElement(selectedVar.getName());
+						
+						for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+							if (entry.getValue().getClass().getSimpleName().equals("Output")) {
+								Output comboOut = (Output)entry.getValue();
+								if (selectedVar.getName().equals(comboOut.getName())) {
+									entry.setValue(insertDialog.getOutputVariable());
+								}
+							}
+						}
+						
+						for (int j=0; j<rules.size(); j++) {
+							T1_Consequent[] cons = rules.get(j).getConsequents();
+							
+							for (int c=0; c<cons.length; c++) {
+								Output varOut = cons[c].getOutput();
+								if (selectedVar.getName().equals(varOut.getName())) {
+									cons[c] = new T1_Consequent("some consequent", cons[c].getMF(), insertDialog.getOutputVariable());
+								}
+							}
+						}
+						
+						outputVars.add(insertDialog.getOutputVariable());
+						outputListModel.addElement(insertDialog.getInputVariable().getName());
+						varNames.add(insertDialog.getOutputVariable().getName());
+						outputVarsList.setModel(outputListModel);
+						outputVars.remove(selectedVar);
+						update();
+					}
+				}
+			}
+		});
 		
 		outputVarsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		outputVarsList.setBounds(10, 210, 106, 125);
@@ -163,32 +262,36 @@ public class MainWindow {
 		// the application adds it to the appropriate ArrayList and updates the list boxes in the main window.
 		addVarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AddVariable insertDialog = new AddVariable();
+				AddVariable insertDialog = new AddVariable(varNames);
 				insertDialog.setVisible(true);
 				
-				int vt = insertDialog.getVariableType();
-				if (vt == 1) {
-					//System.out.println(insertDialog.getInputVariable().getClass().getSimpleName());
-					inputVars.add(insertDialog.getInputVariable());
-					inputListModel.addElement(insertDialog.getInputVariable().getName());
-					inputVarsList.setModel(inputListModel);
-				} else if (vt == 2) {
-					//System.out.println(insertDialog.getOutputVariable().getClass().getSimpleName());
-					outputVars.add(insertDialog.getOutputVariable());
-					outputListModel.addElement(insertDialog.getOutputVariable().getName());
-					outputVarsList.setModel(outputListModel);
+				if (insertDialog.getButton().equals("OK")) {
+					int vt = insertDialog.getVariableType();
+					if (vt == 1) {
+						//System.out.println(insertDialog.getInputVariable().getClass().getSimpleName());
+						inputVars.add(insertDialog.getInputVariable());
+						inputListModel.addElement(insertDialog.getInputVariable().getName());
+						varNames.add(insertDialog.getInputVariable().getName());
+						inputVarsList.setModel(inputListModel);
+					} else if (vt == 2) {
+						//System.out.println(insertDialog.getOutputVariable().getClass().getSimpleName());
+						outputVars.add(insertDialog.getOutputVariable());
+						outputListModel.addElement(insertDialog.getOutputVariable().getName());
+						varNames.add(insertDialog.getOutputVariable().getName());
+						outputVarsList.setModel(outputListModel);
+					}
+					update();
 				}
-				update();
 			}
 		});
 		addVarButton.setBounds(10, 346, 116, 23);
 		frmEfemeler.getContentPane().add(addVarButton);
 		
-		lblMembershipFunctions.setBounds(458, 11, 116, 14);
+		lblMembershipFunctions.setBounds(458, 7, 116, 23);
 		frmEfemeler.getContentPane().add(lblMembershipFunctions);
 		
 		mfList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		mfList.setBounds(458, 36, 106, 130);
+		mfList.setBounds(458, 66, 106, 130);
 		frmEfemeler.getContentPane().add(mfList);
 		functionListModel = new DefaultListModel();
 		
@@ -197,27 +300,30 @@ public class MainWindow {
 		// Lastly the list box in the main window is updated
 		btnAddMf.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				AddMembershipFunction mfDialog = new AddMembershipFunction(inputVars, outputVars);
+				AddMembershipFunction mfDialog = new AddMembershipFunction(inputVars, outputVars, mfNames);
 				mfDialog.setVisible(true);
 				
-				T1MF_Prototype function = mfDialog.getFunction();
-				functions.add(function);
-				functionMap.put(function, mfDialog.getVariable());
-				functionListModel.addElement(mfDialog.getFunction().getName());
-				mfList.setModel(functionListModel);
-				update();
+				if (mfDialog.getButton().equals("OK")) {
+					T1MF_Prototype function = mfDialog.getFunction();
+					functions.add(function);
+					functionMap.put(function, mfDialog.getVariable());
+					functionListModel.addElement(mfDialog.getFunction().getName());
+					mfList.setModel(functionListModel);
+					mfNames.add(mfDialog.getFunction().getName());
+					update();
+				}
 			}
 		});
-		btnAddMf.setBounds(468, 172, 89, 23);
+		btnAddMf.setBounds(468, 202, 89, 23);
 		frmEfemeler.getContentPane().add(btnAddMf);
 		
-		separator_3.setBounds(458, 210, 106, 2);
+		separator_3.setBounds(458, 240, 106, 2);
 		frmEfemeler.getContentPane().add(separator_3);
 		
-		lblRules.setBounds(458, 221, 89, 14);
+		lblRules.setBounds(458, 251, 89, 14);
 		frmEfemeler.getContentPane().add(lblRules);
 		
-		ruleBaseList.setBounds(458, 244, 106, 125);
+		ruleBaseList.setBounds(458, 274, 106, 125);
 		frmEfemeler.getContentPane().add(ruleBaseList);
 		rulebaseListModel = new DefaultListModel();
 		
@@ -228,13 +334,22 @@ public class MainWindow {
 				AddRule ruleDialog = new AddRule(inputVars, outputVars, functionMap);
 				ruleDialog.setVisible(true);
 				
-				T1_Rule rule = ruleDialog.getRule();
-				rules.add(rule);
+				if (ruleDialog.getButton().equals("OK")) {
+					T1_Rule rule = ruleDialog.getRule();
+					rules.add(rule);
+					rulebaseListModel.addElement(ruleDialog.getName());
+					ruleBaseList.setModel(rulebaseListModel);
+					update();
+				}
 			}
 		});
 		
-		btnAddRule.setBounds(468, 380, 89, 23);
+		btnAddRule.setBounds(468, 410, 89, 23);
 		frmEfemeler.getContentPane().add(btnAddRule);
+		
+		JLabel lblFunctions = new JLabel("Functions");
+		lblFunctions.setBounds(458, 37, 89, 14);
+		frmEfemeler.getContentPane().add(lblFunctions);
 		
 		frmEfemeler.setJMenuBar(menuBar);
 		
@@ -246,7 +361,15 @@ public class MainWindow {
 				
 				String systemName = exportCodeDialog.getSystemName();
 				String[] rbNames = new String[2];
+				rbNames[0] = "rulebase1";
+				rbNames[1] = "anotherRulebase";
 				try {
+					
+					File directory = new File(systemName);
+					if (!directory.exists()) {
+						directory.mkdirs();
+					}
+					
 					newFIS = new PrintWriter(System.getProperty("user.dir") + File.separator + systemName + File.separator + systemName + ".java", "UTF-8");
 					
 					prepare(systemName, inputVars, outputVars, rbNames);
@@ -262,6 +385,22 @@ public class MainWindow {
 						}
 					}
 					
+					writeRuleBase(rbNames[0], 5);
+					
+					for (int r=0; r<rules.size(); r++) {
+						
+						for (int a=0; a<rules.get(r).getAntecedents().length; a++) {
+							writeAntecedent(rules.get(r).getAntecedents()[a]);
+						}
+						
+						for (int c=0; c<rules.get(r).getConsequents().length; c++) {
+							writeConsequent(rules.get(r).getConsequents()[c]);
+						}
+						
+						writeRule(rbNames[0], rules.get(r));
+						
+					}
+					
 					writeMain(systemName);
 					closeUp();
 				} catch (FileNotFoundException e) {
@@ -272,7 +411,7 @@ public class MainWindow {
 			}
 		});
 		
-		mnOptions.add(mntmExportCode);		
+		mnOptions.add(mntmExportCode);
 		mnOptions.add(mntmExportEclipseProject);
 		mnOptions.add(separator_1);
 		
@@ -331,11 +470,11 @@ public class MainWindow {
 				xpaths = parser.getExpressions(mapping);
 				parser.parseFile(browser.getSelectedFile(), xpaths);
 				parser.closeUp();
+				JOptionPane.showMessageDialog(frmEfemeler, "System built. Please check " + System.getProperty("user.dir") + File.separator + browser.getSelectedFile().getName());
 			} catch (Exception e) {
 				JOptionPane.showMessageDialog(frmEfemeler, e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
 				e.printStackTrace();
 			}
-			//JOptionPane.showMessageDialog(frmEfemeler, "System built. Please check " + System.getProperty("user.dir") + File.separator + browser.getSelectedFile().getName());
 		}
 	}
 	
@@ -381,7 +520,7 @@ public class MainWindow {
 		}
 		
 		// If rules are present enable exporting options
-		if (ruleMap.size() > 0 ) {
+		if (rules.size() > 0 ) {
 			mntmExportCode.setEnabled(true);
 			mntmExportEclipseProject.setEnabled(true);
 		}
@@ -596,7 +735,7 @@ public class MainWindow {
 	 * @param antecedent the antecedent to be written
 	 */
 	public static void writeAntecedent(T1_Antecedent antecedent) {
-		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + antecedent.getInput().getName() + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
+		newFIS.println("\t\tT1_Antecedent " + getVariableName(antecedent.getName()) + getVariableName(antecedent.getInput().getName()) + " = new T1_Antecedent(\"" + antecedent.getName() + "\", " + getVariableName(antecedent.getMF().getName()) + antecedent.getInput().getName() + "MF, " + getVariableName(antecedent.getInput().getName()) + ");");
 		newFIS.println();
 	}
 
@@ -606,7 +745,7 @@ public class MainWindow {
 	 * @param consequent the consequent to be written
 	 */
 	public static void writeConsequent(T1_Consequent consequent) {
-		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + consequent.getOutput().getName() + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
+		newFIS.println("\t\tT1_Consequent " + getVariableName(consequent.getName()) + getVariableName(consequent.getOutput().getName()) + " = new T1_Consequent(\"" + consequent.getName() + "\", " + getVariableName(consequent.getMF().getName()) + consequent.getOutput().getName() + "MF, " + getVariableName(consequent.getOutput().getName()) + ");");
 		newFIS.println();
 	}
 	
@@ -631,18 +770,18 @@ public class MainWindow {
 		String antecedentNames = "";
 		for (int i=0; i<rule.getAntecedents().length; i++) {
 			if (i==0) {
-				antecedentNames += getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+				antecedentNames += getVariableName(rule.getAntecedents()[i].getName()) + getVariableName(rule.getAntecedents()[i].getInput().getName());
 			} else {
-				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName()) + "MF";
+				antecedentNames += ", " + getVariableName(rule.getAntecedents()[i].getName()) + getVariableName(rule.getAntecedents()[i].getInput().getName());
 			}
 		}
 		
 		String consequentNames = "";
 		for (int j=0; j<rule.getConsequents().length; j++) {
 			if (j==0) {
-				consequentNames += getVariableName(rule.getConsequents()[j].getName());
+				consequentNames += getVariableName(rule.getConsequents()[j].getName()) + getVariableName(rule.getConsequents()[j].getOutput().getName());
 			} else {
-				consequentNames += ", " + getVariableName(rule.getConsequents()[j].getName());
+				consequentNames += ", " + getVariableName(rule.getConsequents()[j].getName()) + getVariableName(rule.getConsequents()[j].getOutput().getName());
 			}
 		}
 		newFIS.println("\t\t" + getVariableName(rulebase) + ".addRule(new T1_Rule(new T1_Antecedent[]{" + antecedentNames + "}, new T1_Consequent[]{" + consequentNames + "}));");

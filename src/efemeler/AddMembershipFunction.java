@@ -10,6 +10,7 @@ import java.awt.FlowLayout;
 import javax.swing.AbstractButton;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.JLabel;
@@ -29,6 +30,7 @@ public class AddMembershipFunction extends JDialog {
 	private JTextField txtName;
 	private JComboBox mfTypeBox;
 	private Object connectedVariable;
+	private String button;
 	
 	// Singleton membership value
 	private JLabel singletonValueLbl;
@@ -85,13 +87,15 @@ public class AddMembershipFunction extends JDialog {
 	private static ArrayList<Input> in;
 	private static ArrayList<Output> out;
 	private static T1MF_Prototype function;
+	private boolean valid = false;
+	private static ArrayList<String> names = new ArrayList<String>();
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
 		try {
-			AddMembershipFunction dialog = new AddMembershipFunction(in, out);
+			AddMembershipFunction dialog = new AddMembershipFunction(in, out, names);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
@@ -102,7 +106,8 @@ public class AddMembershipFunction extends JDialog {
 	/**
 	 * Create the dialog.
 	 */
-	public AddMembershipFunction(final ArrayList<Input> inputs, final ArrayList<Output> outputs) {
+	public AddMembershipFunction(final ArrayList<Input> inputs, final ArrayList<Output> outputs, final ArrayList<String> functionNames) {
+		names = functionNames;
 		setModal(true);
 		setTitle("Add Membership Function");
 		setBounds(100, 100, 452, 344);
@@ -117,7 +122,7 @@ public class AddMembershipFunction extends JDialog {
 		}
 		{
 			txtName = new JTextField();
-			txtName.setBounds(47, 8, 166, 20);
+			txtName.setBounds(75, 8, 166, 20);
 			contentPanel.add(txtName);
 			txtName.setColumns(10);
 		}
@@ -341,7 +346,7 @@ public class AddMembershipFunction extends JDialog {
 		
 		{
 			mfTypeBox = new JComboBox();
-			mfTypeBox.setBounds(47, 66, 166, 20);
+			mfTypeBox.setBounds(75, 63, 166, 20);
 			mfTypeBox.addItem("Discretized");
 			mfTypeBox.addItem("Gauangle");
 			mfTypeBox.addItem("Gaussian");
@@ -402,11 +407,11 @@ public class AddMembershipFunction extends JDialog {
 		}
 		
 		JLabel lblVariable = new JLabel("Variable");
-		lblVariable.setBounds(10, 41, 46, 14);
+		lblVariable.setBounds(10, 41, 65, 14);
 		contentPanel.add(lblVariable);
 		
 		final JComboBox variableComboBox = new JComboBox();
-		variableComboBox.setBounds(57, 38, 156, 20);
+		variableComboBox.setBounds(85, 39, 156, 20);
 		contentPanel.add(variableComboBox);		
 		for (int i=0; i<inputs.size(); i++) {
 			variableComboBox.addItem(inputs.get(i).getName());
@@ -423,57 +428,61 @@ public class AddMembershipFunction extends JDialog {
 				JButton okButton = new JButton("Add");
 				okButton.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent arg0) {
+						button = "OK";
 						String currentSelection = (String)mfTypeBox.getSelectedItem();
 						//System.out.println(currentSelection);
-						
 						String variableSelection = (String)variableComboBox.getSelectedItem();
-						for (int i=0; i<inputs.size(); i++) {
-							if (variableSelection.equals(inputs.get(i).getName())) {
-								connectedVariable = inputs.get(i);
+						
+						if (validation(currentSelection)) {
+							for (int i=0; i<inputs.size(); i++) {
+								if (variableSelection.equals(inputs.get(i).getName())) {
+									connectedVariable = inputs.get(i);
+								}
 							}
-						}
-						
-						for (int j=0; j<outputs.size(); j++) {
-							if (variableSelection.equals(outputs.get(j).getName())) {
-								connectedVariable = outputs.get(j);
+							
+							for (int j=0; j<outputs.size(); j++) {
+								if (variableSelection.equals(outputs.get(j).getName())) {
+									connectedVariable = outputs.get(j);
+								}
 							}
+							
+							String mfType = (String)mfTypeBox.getSelectedItem();
+							String name = txtName.getText();
+							switch (mfType) {
+								case "Singleton":
+									double value = Double.parseDouble(singletonValueText.getText());
+									function = new T1MF_Singleton(name, value);
+									break;
+								case "Triangular":
+									double triStart = Double.parseDouble(triangularStartText.getText());
+									double peak = Double.parseDouble(triangularPeakText.getText());
+									double triEnd = Double.parseDouble(triangularEndText.getText());
+									function = new T1MF_Triangular(name, triStart, peak, triEnd);
+									break;
+								case "Gaussian":
+									double mean = Double.parseDouble(gaussianMeanText.getText());
+									double spread = Double.parseDouble(gaussianSpreadText.getText());
+									function = new T1MF_Gaussian(name, mean, spread);
+									break;
+								case "Gauangle":
+									double gauStart = Double.parseDouble(gauangleStartText.getText());
+									double center = Double.parseDouble(gauangleCentreText.getText());
+									double gauEnd = Double.parseDouble(gauangleEndText.getText());
+									function = new T1MF_Gauangle(name, gauStart, center, gauEnd);
+									break;
+								case "Trapezoidal":
+									double[] parameters = new double[4];
+									parameters[0] = Double.parseDouble(trapezoidalPointAText.getText());
+									parameters[1] = Double.parseDouble(trapezoidalPointBText.getText());
+									parameters[2] = Double.parseDouble(trapezoidalPointCText.getText());
+									parameters[3] = Double.parseDouble(trapezoidalPointDText.getText());
+									function = new T1MF_Trapezoidal(name, parameters);
+									break;	
+							}
+							dispose();
+						} else {
+							JOptionPane.showMessageDialog(contentPanel.getParent(), "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
 						}
-						
-						String mfType = (String)mfTypeBox.getSelectedItem();
-						String name = txtName.getText();
-						switch (mfType) {
-							case "Singleton":
-								double value = Double.parseDouble(singletonValueText.getText());
-								function = new T1MF_Singleton(name, value);
-								break;
-							case "Triangular":
-								double triStart = Double.parseDouble(triangularStartText.getText());
-								double peak = Double.parseDouble(triangularPeakText.getText());
-								double triEnd = Double.parseDouble(triangularEndText.getText());
-								function = new T1MF_Triangular(name, triStart, peak, triEnd);
-								break;
-							case "Gaussian":
-								double mean = Double.parseDouble(gaussianMeanText.getText());
-								double spread = Double.parseDouble(gaussianSpreadText.getText());
-								function = new T1MF_Gaussian(name, mean, spread);
-								break;
-							case "Gauangle":
-								double gauStart = Double.parseDouble(gauangleStartText.getText());
-								double center = Double.parseDouble(gauangleCentreText.getText());
-								double gauEnd = Double.parseDouble(gauangleEndText.getText());
-								function = new T1MF_Gauangle(name, gauStart, center, gauEnd);
-								break;
-							case "Trapezoidal":
-								double[] parameters = new double[4];
-								parameters[0] = Double.parseDouble(trapezoidalPointAText.getText());
-								parameters[1] = Double.parseDouble(trapezoidalPointBText.getText());
-								parameters[2] = Double.parseDouble(trapezoidalPointCText.getText());
-								parameters[3] = Double.parseDouble(trapezoidalPointDText.getText());
-								function = new T1MF_Trapezoidal(name, parameters);
-								break;
-						}
-						
-						dispose();
 					}
 				});
 				okButton.setActionCommand("OK");
@@ -484,6 +493,7 @@ public class AddMembershipFunction extends JDialog {
 				JButton cancelButton = new JButton("Cancel");
 				cancelButton.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent arg0) {
+						button = "cancel";
 						dispose();
 					}
 				});
@@ -491,6 +501,19 @@ public class AddMembershipFunction extends JDialog {
 				buttonPane.add(cancelButton);
 			}
 		}
+	}
+	
+	private boolean availableName(String s) {
+		for (int i=0; i<names.size(); i++) {
+			if (names.get(i).equals(s)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public String getButton() {
+		return button;
 	}
 	
 	public T1MF_Prototype getFunction() {
@@ -547,5 +570,49 @@ public class AddMembershipFunction extends JDialog {
 		trapezoidalPointCText.setVisible(false);
 		trapezoidalPointDLbl.setVisible(false);
 		trapezoidalPointDText.setVisible(false);
+	}
+	
+	private boolean isNumeric(String s) {  
+	    return s.matches("[-+]?\\d*\\.?\\d+");  
+	}
+	
+	private boolean validation(String type) {
+		switch (type) {
+			case "Triangular":
+				if (!availableName(txtName.getText()) || !isNumeric(triangularStartText.getText()) || !isNumeric(triangularPeakText.getText()) || !isNumeric(triangularEndText.getText()) || txtName.getText().length() == 0 || triangularStartText.getText().length() == 0 || triangularPeakText.getText().length() == 0 || triangularEndText.getText().length() == 0) {
+					valid = false;
+				} else {
+					valid = true;
+				}
+				break;
+			case "Gaussian":
+				if (!availableName(txtName.getText()) || !isNumeric(gaussianSpreadText.getText()) || !isNumeric(gaussianMeanText.getText()) || txtName.getText().length() == 0 || gaussianSpreadText.getText().length() == 0 || gaussianMeanText.getText().length() == 0) {
+					valid = false;
+				}
+				break;
+			case "Singleton":
+				if (!availableName(txtName.getText()) || !isNumeric(singletonValueText.getText()) || txtName.getText().length() == 0 || singletonValueText.getText().length() == 0) {
+					valid = false;
+				} else {
+					valid = true;
+				}
+				break;
+			case "Gauangle":
+				if (!availableName(txtName.getText()) || !isNumeric(gauangleSpreadForLeftText.getText()) || !isNumeric(gauangleSpreadForRightText.getText()) || !isNumeric(gauangleStartText.getText()) || !isNumeric(gauangleCentreText.getText()) || !isNumeric(gauangleEndText.getText()) || txtName.getText().length() == 0 || gauangleSpreadForLeftText.getText().length() == 0 || gauangleSpreadForRightText.getText().length() == 0 || gauangleStartText.getText().length() == 0 || gauangleCentreText.getText().length() == 0 || gauangleEndText.getText().length() == 0) {
+					valid = false;
+				} else {
+					valid = true;
+				}
+				break;
+			case "Trapezoidal":
+				if (!availableName(txtName.getText()) || !isNumeric(trapezoidalPointAText.getText()) || !isNumeric(trapezoidalPointBText.getText()) || !isNumeric(trapezoidalPointCText.getText()) || !isNumeric(trapezoidalPointDText.getText()) || txtName.getText().length() == 0 || trapezoidalPointAText.getText().length() == 0 || trapezoidalPointBText.getText().length() == 0 || trapezoidalPointCText.getText().length() == 0 || trapezoidalPointDText.getText().length() == 0) {
+					valid = false;
+				} else {
+					valid = true;
+				}
+				break;
+		}
+			
+		return valid;
 	}
 }

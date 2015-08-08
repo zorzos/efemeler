@@ -5,11 +5,13 @@ import java.awt.FlowLayout;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
 
 import javax.swing.JLabel;
 import javax.swing.JTextField;
@@ -25,24 +27,32 @@ public class AddVariable extends JDialog {
 	private JComboBox typeBox;
 	private JTextField domainLower;
 	private JTextField domainUpper;
+	boolean valid = false;
+	String button;
+	private static ArrayList<String> varNames = new ArrayList<String>();
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
 		try {
-			AddVariable dialog = new AddVariable();
+			AddVariable dialog = new AddVariable(varNames);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
+	public String getButton() {
+		return button;
+	}
 
 	/**
 	 * Create the dialog.
 	 */
-	public AddVariable() {
+	public AddVariable(ArrayList<String> names) {
+		varNames = names;
 		setModal(true);
 		setTitle("Add Variable");
 		setBounds(100, 100, 210, 211);
@@ -100,7 +110,12 @@ public class AddVariable extends JDialog {
 				JButton okButton = new JButton("Add");
 				okButton.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent arg0) {
-				        dispose();
+				        if (validation()) {
+				        	button = "OK";
+				        	dispose();
+				        } else {
+				        	JOptionPane.showMessageDialog(contentPanel.getParent(), "Please check all fields, name, domain left and domain right are required." + "\n" + "Check that the variable name has not been entered again and that the domain text fields have a numeric value.", "Error", JOptionPane.ERROR_MESSAGE);
+				        }
 					}
 				});
 				okButton.setActionCommand("OK");
@@ -111,6 +126,7 @@ public class AddVariable extends JDialog {
 				JButton cancelButton = new JButton("Cancel");
 				cancelButton.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
+						button = "cancel";
 						dispose();
 					}
 				});
@@ -142,5 +158,49 @@ public class AddVariable extends JDialog {
 		} else {
 			return 0;
 		}
+	}
+	
+	public void setNames(ArrayList<String> names) {
+		varNames = names;
+	}
+	
+	public void setInput(Input in) {
+		txtName.setText(in.getName());
+		txtScale.setText(in.getScale());
+		domainLower.setText(Double.toString(in.getDomain().getLeft()));
+		domainUpper.setText(Double.toString(in.getDomain().getRight()));
+	}
+	
+	public void setOutput(Output out) {
+		txtName.setText(out.getName());
+		txtScale.setText(out.getScale());
+		domainLower.setText(Double.toString(out.getDomain().getLeft()));
+		domainUpper.setText(Double.toString(out.getDomain().getRight()));
+	}
+	
+	public ArrayList<String> getNames() {
+		return varNames;
+	}
+	
+	private boolean isNumeric(String s) {  
+	    return s.matches("[-+]?\\d*\\.?\\d+");  
+	} 
+	
+	private boolean availableName(String s) {
+		for (int i=0; i<varNames.size(); i++) {
+			if (varNames.get(i).equals(s)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	private boolean validation() {
+		if (!availableName(txtName.getText()) || !isNumeric(domainLower.getText()) || !isNumeric(domainUpper.getText()) || txtName.getText().length() == 0 || domainLower.getText().length() == 0|| domainUpper.getText().length() == 0 || Double.parseDouble(domainLower.getText()) > Double.parseDouble(domainUpper.getText())) {
+			valid = false;
+		} else {
+			valid = true;
+		}
+		return valid;
 	}
 }
