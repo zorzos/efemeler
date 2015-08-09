@@ -34,7 +34,6 @@ import type1.system.T1_Consequent;
 public class AddRule extends JDialog {
 
 	private final JPanel contentPanel = new JPanel();
-	private int buttonClickCount = 0;
 	private JTextField ruleNameText;
 	private JTextField weightText;
 	private JButton btnAddMoreVariables = new JButton("Add variables");

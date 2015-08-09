@@ -44,6 +44,7 @@ import org.xml.sax.SAXException;
 
 import type1.sets.T1MF_Gauangle;
 import type1.sets.T1MF_Gaussian;
+import type1.sets.T1MF_Interface;
 import type1.sets.T1MF_Prototype;
 import type1.sets.T1MF_Singleton;
 import type1.sets.T1MF_Trapezoidal;
@@ -80,7 +81,6 @@ public class MainWindow {
 	JMenuBar menuBar = new JMenuBar();
 	JMenu mnOptions = new JMenu("Options");
 	JMenuItem mntmExportCode = new JMenuItem("Export code");
-	JMenuItem mntmExportEclipseProject = new JMenuItem("Export Eclipse project");
 	JSeparator separator_1 = new JSeparator();
 	JMenuItem mntmSystemFromFml = new JMenuItem("Build system from FML file");
 	JSeparator separator_2 = new JSeparator();
@@ -202,8 +202,6 @@ public class MainWindow {
 		outputVarsList.addMouseListener(new MouseAdapter() {
 			public void mouseClicked(MouseEvent arg0) {
 				if (arg0.getClickCount() == 2) {
-					int index = outputVarsList.locationToIndex(arg0.getPoint());
-					
 					Output selectedVar = null;
 					for (int i=0; i<outputVars.size(); i++) {
 						if (outputVars.get(i).getName().equals(outputVarsList.getSelectedValue().toString())) {
@@ -214,8 +212,7 @@ public class MainWindow {
 					AddVariable insertDialog = new AddVariable(varNames);
 					insertDialog.setOutput(selectedVar);
 					insertDialog.setVisible(true);
-					//System.out.println(index);
-					
+										
 					
 					if (insertDialog.getButton().equals("OK")) {
 						varNames.remove(selectedVar.getName());
@@ -289,6 +286,61 @@ public class MainWindow {
 		
 		lblMembershipFunctions.setBounds(458, 7, 116, 23);
 		frmEfemeler.getContentPane().add(lblMembershipFunctions);
+		mfList.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent arg0) {
+				if (arg0.getClickCount() == 2) {
+					Object var = null;
+					T1MF_Prototype mf = null;
+					
+					for (Map.Entry<T1MF_Prototype, Object> entry : functionMap.entrySet()) {
+						if (mfList.getSelectedValue().toString().equals(entry.getKey().getName())) {
+							mf = entry.getKey();
+							if (entry.getValue().getClass().getSimpleName().equals("Input")) {
+								var = (Input)entry.getValue();
+							} else {
+								var = (Output)entry.getValue();
+							}
+						}
+					}
+					AddMembershipFunction mfDialog = new AddMembershipFunction(inputVars, outputVars, mfNames);
+					System.out.println(var);
+					mfDialog.setData(var, mf);
+					mfDialog.setVisible(true);
+					
+					if (mfDialog.getButton().equals("OK")) {
+						mfNames.remove(mf.getName());
+						functionListModel.removeElement(mf.getName());
+						
+						for (int j=0; j<rules.size(); j++) {
+							T1_Antecedent[] ants = rules.get(j).getAntecedents();
+							
+							for (int a=0; a<ants.length; a++) {
+								T1MF_Interface mfIn = ants[a].getMF();
+								if (mf.getName().equals(mfIn.getName())) {
+									ants[a] = new T1_Antecedent("some antecedent", mfDialog.getFunction(), ants[a].getInput());
+								}
+							}
+							
+							T1_Consequent[] cons = rules.get(j).getConsequents();
+							
+							for (int c=0; c<cons.length; c++) {
+								T1MF_Interface mfOut = cons[c].getMF();
+								if (mf.getName().equals(mfOut.getName())) {
+									cons[c] = new T1_Consequent("some consequent", mfDialog.getFunction(), cons[c].getOutput());
+								}
+							}
+						}
+						
+						functionMap.put(mfDialog.getFunction(), var);
+						functionListModel.addElement(mfDialog.getFunction().getName());
+						mfNames.add(mfDialog.getFunction().getName());
+						mfList.setModel(functionListModel);
+						functionMap.remove(mf);
+						update();
+					}
+				}
+			}
+		});
 		
 		mfList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		mfList.setBounds(458, 66, 106, 130);
@@ -412,7 +464,6 @@ public class MainWindow {
 		});
 		
 		mnOptions.add(mntmExportCode);
-		mnOptions.add(mntmExportEclipseProject);
 		mnOptions.add(separator_1);
 		
 		// This bit calls the function that builds a Fuzzy inference system from a Fuzzy Markup Language file
@@ -503,7 +554,6 @@ public class MainWindow {
 		// If no variables present, disable all options
 		if (inputCount <  1 || outputCount < 1) {
 			mntmExportCode.setEnabled(false);
-			mntmExportEclipseProject.setEnabled(false);
 			btnAddMf.setEnabled(false);
 			btnAddRule.setEnabled(false);
 		} 
@@ -522,7 +572,6 @@ public class MainWindow {
 		// If rules are present enable exporting options
 		if (rules.size() > 0 ) {
 			mntmExportCode.setEnabled(true);
-			mntmExportEclipseProject.setEnabled(true);
 		}
 	}
 	

@@ -31,6 +31,8 @@ public class AddMembershipFunction extends JDialog {
 	private JComboBox mfTypeBox;
 	private Object connectedVariable;
 	private String button;
+	private final JComboBox variableComboBox = new JComboBox();
+	
 	
 	// Singleton membership value
 	private JLabel singletonValueLbl;
@@ -61,12 +63,6 @@ public class AddMembershipFunction extends JDialog {
 	private JTextField triangularPeakText;
 	private JLabel triangularEndLbl;
 	private JTextField triangularEndText;
-	
-	// Gauangle
-	private JLabel gauangleSpreadForLeftLbl;
-	private JTextField gauangleSpreadForLeftText;
-	private JLabel gauangleSpreadForRightLbl;
-	private JTextField gauangleSpreadForRightText;
 	private JLabel gauangleStartLbl;
 	private JTextField gauangleStartText;
 	private JLabel gauangleCentreLbl;
@@ -261,48 +257,30 @@ public class AddMembershipFunction extends JDialog {
 		contentPanel.add(triangularEndText);
 		triangularEndText.setColumns(10);
 		
-		// Gauangle
-		gauangleSpreadForLeftLbl = new JLabel("Spread for Left");
-		gauangleSpreadForLeftLbl.setBounds(10, 97, 46, 14);
-		contentPanel.add(gauangleSpreadForLeftLbl);
-		
-		gauangleSpreadForLeftText = new JTextField();
-		gauangleSpreadForLeftText.setBounds(148, 94, 86, 20);
-		contentPanel.add(gauangleSpreadForLeftText);
-		gauangleSpreadForLeftText.setColumns(10);
-		
-		gauangleSpreadForRightLbl = new JLabel("Spread for Right");
-		gauangleSpreadForRightLbl.setBounds(10, 122, 46, 14);
-		contentPanel.add(gauangleSpreadForRightLbl);
-		
-		gauangleSpreadForRightText = new JTextField();
-		gauangleSpreadForRightText.setBounds(148, 119, 86, 20);
-		contentPanel.add(gauangleSpreadForRightText);
-		
 		gauangleStartLbl = new JLabel("Start");
-		gauangleStartLbl.setBounds(10, 150, 123, 23);
+		gauangleStartLbl.setBounds(10, 91, 123, 23);
 		contentPanel.add(gauangleStartLbl);
 		
 		gauangleStartText = new JTextField();
-		gauangleStartText.setBounds(148, 150, 86, 23);
+		gauangleStartText.setBounds(148, 91, 86, 23);
 		contentPanel.add(gauangleStartText);
 		gauangleStartText.setColumns(10);
 		
 		gauangleCentreLbl = new JLabel("Centre");
-		gauangleCentreLbl.setBounds(10, 184, 123, 23);
+		gauangleCentreLbl.setBounds(10, 125, 123, 23);
 		contentPanel.add(gauangleCentreLbl);
 		
 		gauangleCentreText = new JTextField();
-		gauangleCentreText.setBounds(148, 184, 86, 23);
+		gauangleCentreText.setBounds(148, 125, 86, 23);
 		contentPanel.add(gauangleCentreText);
 		gauangleCentreText.setColumns(10);
 		
 		gauangleEndLbl = new JLabel("End");
-		gauangleEndLbl.setBounds(10, 218, 86, 23);
+		gauangleEndLbl.setBounds(10, 159, 86, 23);
 		contentPanel.add(gauangleEndLbl);
 		
 		gauangleEndText = new JTextField();
-		gauangleEndText.setBounds(148, 218, 86, 23);
+		gauangleEndText.setBounds(148, 159, 86, 23);
 		contentPanel.add(gauangleEndText);
 		gauangleEndText.setColumns(10);
 		
@@ -381,11 +359,7 @@ public class AddMembershipFunction extends JDialog {
 			    		triangularEndLbl.setVisible(true);
 			    		triangularEndText.setVisible(true);
 			        } else if (mfName.equals("Gauangle")) {
-			        	gauangleSpreadForLeftLbl.setVisible(true);
-			    		gauangleSpreadForLeftText.setVisible(true);
-			    		gauangleSpreadForRightLbl.setVisible(true);
-			    		gauangleSpreadForRightText.setVisible(true);
-			    		gauangleStartLbl.setVisible(true);
+			        	gauangleStartLbl.setVisible(true);
 			    		gauangleStartText.setVisible(true);
 			    		gauangleCentreLbl.setVisible(true);
 			    		gauangleCentreText.setVisible(true);
@@ -410,7 +384,6 @@ public class AddMembershipFunction extends JDialog {
 		lblVariable.setBounds(10, 41, 65, 14);
 		contentPanel.add(lblVariable);
 		
-		final JComboBox variableComboBox = new JComboBox();
 		variableComboBox.setBounds(85, 39, 156, 20);
 		contentPanel.add(variableComboBox);		
 		for (int i=0; i<inputs.size(); i++) {
@@ -503,6 +476,92 @@ public class AddMembershipFunction extends JDialog {
 		}
 	}
 	
+	public void setData(Object o, T1MF_Prototype mf) {
+		hideAll();
+		txtName.setText(mf.getName());
+		for (int y=0; y<variableComboBox.getItemCount(); y++) {
+			if (o.getClass().getSimpleName().toString().equals("Input")) {
+				Input in = (Input)o;
+				if (in.getName().equals(variableComboBox.getItemAt(y).toString())) {
+					variableComboBox.setSelectedItem(variableComboBox.getItemAt(y).toString());
+				}
+			} else {
+				Output out = (Output)o;
+				if (out.getName().equals(variableComboBox.getItemAt(y).toString())) {
+					variableComboBox.setSelectedItem(variableComboBox.getItemAt(y).toString());
+				}
+			}
+		}
+		
+		int underscoreIndex = mf.getClass().getSimpleName().lastIndexOf("_") + 1;
+		mfTypeBox.setSelectedItem(mf.getClass().getSimpleName().substring(underscoreIndex));
+		if (mf.getClass().getSimpleName().equals("T1MF_Singleton")) {
+			T1MF_Singleton singleton = (T1MF_Singleton) mf;
+			singletonValueText.setText(Double.toString(singleton.getValue()));
+						
+        	singletonValueLbl.setVisible(true);
+        	singletonValueText.setVisible(true);
+        } else if (mf.getClass().getSimpleName().equals("T1MF_Gaussian")) {
+        	T1MF_Gaussian gaussian = (T1MF_Gaussian)mf;
+        	gaussianMeanText.setText(Double.toString(gaussian.getMean()));
+        	gaussianSpreadText.setText(Double.toString(gaussian.getSpread()));
+        	
+        	gaussianMeanLbl.setVisible(true);
+    		gaussianMeanText.setVisible(true);
+    		gaussianSpreadLbl.setVisible(true);
+    		gaussianSpreadText.setVisible(true);
+        } else if (mf.getClass().getSimpleName().equals("T1MF_Discretized")) {
+        	T1MF_Discretized discretized = (T1MF_Discretized)mf;
+        	discretizedPeakText.setText(Double.toString(discretized.getPeak()));
+        	
+        	discretizedPeakLbl.setVisible(true);
+        	discretizedPeakText.setVisible(true);
+        	discretizedLevelLbl.setVisible(true);
+        	discretizedLevelText.setVisible(true);
+        	discretizedLeftShoulder.setVisible(true);
+        	discretizedRightShoulder.setVisible(true);
+        } else if (mf.getClass().getSimpleName().equals("T1MF_Triangular")) {
+        	T1MF_Triangular triangular = (T1MF_Triangular)mf;
+        	triangularStartText.setText(Double.toString(triangular.getStart()));
+        	triangularPeakText.setText(Double.toString(triangular.getPeak()));
+        	triangularEndText.setText(Double.toString(triangular.getEnd()));
+        	
+        	triangularStartLbl.setVisible(true);
+    		triangularStartText.setVisible(true);
+    		triangularPeakLbl.setVisible(true);
+    		triangularPeakText.setVisible(true);
+    		triangularEndLbl.setVisible(true);
+    		triangularEndText.setVisible(true);
+        } else if (mf.getClass().getSimpleName().equals("T1MF_Gauangle")) {
+        	T1MF_Gauangle gauangle = (T1MF_Gauangle)mf;
+        	gauangleStartText.setText(Double.toString(gauangle.getStart()));
+        	gauangleCentreText.setText(Double.toString(gauangle.getPeak()));
+        	gauangleEndText.setText(Double.toString(gauangle.getEnd()));
+        	
+        	gauangleStartLbl.setVisible(true);
+    		gauangleStartText.setVisible(true);
+    		gauangleCentreLbl.setVisible(true);
+    		gauangleCentreText.setVisible(true);
+    		gauangleEndLbl.setVisible(true);
+    		gauangleEndText.setVisible(true);
+        } else if (mf.getClass().getSimpleName().equals("T1MF_Trapezoidal")) {
+        	T1MF_Trapezoidal trapezoidal = (T1MF_Trapezoidal)mf;
+        	trapezoidalPointAText.setText(Double.toString(trapezoidal.getA()));
+        	trapezoidalPointBText.setText(Double.toString(trapezoidal.getB()));
+        	trapezoidalPointCText.setText(Double.toString(trapezoidal.getC()));
+        	trapezoidalPointDText.setText(Double.toString(trapezoidal.getD()));
+        	
+        	trapezoidalPointALbl.setVisible(true);
+    		trapezoidalPointAText.setVisible(true);
+    		trapezoidalPointBLbl.setVisible(true);
+    		trapezoidalPointBText.setVisible(true);
+    		trapezoidalPointCLbl.setVisible(true);
+    		trapezoidalPointCText.setVisible(true);
+    		trapezoidalPointDLbl.setVisible(true);
+    		trapezoidalPointDText.setVisible(true);
+        }
+	}
+	
 	private boolean availableName(String s) {
 		for (int i=0; i<names.size(); i++) {
 			if (names.get(i).equals(s)) {
@@ -550,11 +609,6 @@ public class AddMembershipFunction extends JDialog {
 		triangularPeakText.setVisible(false);
 		triangularEndLbl.setVisible(false);
 		triangularEndText.setVisible(false);
-		
-		gauangleSpreadForLeftLbl.setVisible(false);
-		gauangleSpreadForLeftText.setVisible(false);
-		gauangleSpreadForRightLbl.setVisible(false);
-		gauangleSpreadForRightText.setVisible(false);
 		gauangleStartLbl.setVisible(false);
 		gauangleStartText.setVisible(false);
 		gauangleCentreLbl.setVisible(false);
@@ -598,7 +652,7 @@ public class AddMembershipFunction extends JDialog {
 				}
 				break;
 			case "Gauangle":
-				if (!availableName(txtName.getText()) || !isNumeric(gauangleSpreadForLeftText.getText()) || !isNumeric(gauangleSpreadForRightText.getText()) || !isNumeric(gauangleStartText.getText()) || !isNumeric(gauangleCentreText.getText()) || !isNumeric(gauangleEndText.getText()) || txtName.getText().length() == 0 || gauangleSpreadForLeftText.getText().length() == 0 || gauangleSpreadForRightText.getText().length() == 0 || gauangleStartText.getText().length() == 0 || gauangleCentreText.getText().length() == 0 || gauangleEndText.getText().length() == 0) {
+				if (!availableName(txtName.getText()) || !isNumeric(gauangleStartText.getText()) || !isNumeric(gauangleCentreText.getText()) || !isNumeric(gauangleEndText.getText()) || txtName.getText().length() == 0 || gauangleStartText.getText().length() == 0 || gauangleCentreText.getText().length() == 0 || gauangleEndText.getText().length() == 0) {
 					valid = false;
 				} else {
 					valid = true;
